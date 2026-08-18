@@ -11,9 +11,12 @@ import { Capacitor } from "@capacitor/core";
 // StoreKit at runtime as `priceString`, already localised and converted for the
 // user's storefront. Hardcoding a price is how a paywall ends up promising
 // $4.99 and charging ₸2,490 — the mismatch FlipVerdict shipped and had to fix.
+// Sizes only. The 50-pack must stay better value per scan than the 25 — a
+// second tier that costs the same per unit gives nobody a reason to pick it.
+// Intended App Store prices: $4.99 (20.0c/scan) and $7.99 (16.0c/scan).
 export const PACKS = {
   ordo_scans_25: 25,
-  ordo_scans_100: 100,
+  ordo_scans_50: 50,
 };
 
 export const isNative = () => Capacitor.isNativePlatform();
