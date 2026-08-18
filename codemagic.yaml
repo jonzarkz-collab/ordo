@@ -71,6 +71,22 @@ workflows:
           npx cap add ios
           npx cap sync ios
 
+      - name: Restrict to iPhone
+        script: |
+          # Capacitor's template ships TARGETED_DEVICE_FAMILY = "1,2" (iPhone +
+          # iPad). Leaving iPad on means Apple requires a full set of 13" iPad
+          # screenshots AND reviews the app on an iPad — a second test surface
+          # for an app nobody uses at a restaurant table holding a tablet.
+          # ios/ is regenerated each build, so this has to run every time.
+          PBX="ios/App/App.xcodeproj/project.pbxproj"
+          sed -i '' 's/TARGETED_DEVICE_FAMILY = "1,2"/TARGETED_DEVICE_FAMILY = "1"/g' "$PBX"
+          echo "--- device family now:"
+          grep -n "TARGETED_DEVICE_FAMILY" "$PBX"
+          if grep -q 'TARGETED_DEVICE_FAMILY = "1,2"' "$PBX"; then
+            echo "FATAL: iPad is still enabled."
+            exit 1
+          fi
+
       - name: Inject camera + photo permission strings
         script: |
           # Without these the app crashes the instant the camera opens, and is
