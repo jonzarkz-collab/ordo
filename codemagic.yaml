@@ -79,10 +79,22 @@ workflows:
           # for an app nobody uses at a restaurant table holding a tablet.
           # ios/ is regenerated each build, so this has to run every time.
           PBX="ios/App/App.xcodeproj/project.pbxproj"
-          sed -i '' 's/TARGETED_DEVICE_FAMILY = "1,2"/TARGETED_DEVICE_FAMILY = "1"/g' "$PBX"
+
+          # Match the value quoted OR unquoted — Xcode writes both forms
+          # depending on version. A sed that silently matches nothing would
+          # leave iPad enabled while still "passing", so the checks below
+          # verify the end state rather than trusting the substitution.
+          sed -i '' -E 's/TARGETED_DEVICE_FAMILY = "?1,2"?/TARGETED_DEVICE_FAMILY = "1"/g' "$PBX"
+
           echo "--- device family now:"
-          grep -n "TARGETED_DEVICE_FAMILY" "$PBX"
-          if grep -q 'TARGETED_DEVICE_FAMILY = "1,2"' "$PBX"; then
+          grep -n "TARGETED_DEVICE_FAMILY" "$PBX" || true
+
+          if ! grep -q "TARGETED_DEVICE_FAMILY" "$PBX"; then
+            echo "FATAL: TARGETED_DEVICE_FAMILY not present at all — the"
+            echo "Capacitor template changed and this step needs rewriting."
+            exit 1
+          fi
+          if grep -qE 'TARGETED_DEVICE_FAMILY = "?1,2"?' "$PBX"; then
             echo "FATAL: iPad is still enabled."
             exit 1
           fi
