@@ -1,0 +1,177 @@
+# Codemagic CI — builds the Ordo iOS IPA and ships it to TestFlight.
+#
+# Adapted from the FlipVerdict pipeline, which is already debugged against this
+# Apple account. The comments below record why each step is shaped the way it
+# is; most of them cost a failed build to learn.
+#
+# The iOS project is NOT committed — `npx cap add ios` regenerates it every
+# build, which is why Info.plist keys are injected by a script step rather than
+# edited by hand. It also means no Mac is needed anywhere in this workflow.
+
+workflows:
+  ios-testflight:
+    name: Ordo iOS → TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+
+    environment:
+      node: 24.13.1
+      xcode: latest
+      cocoapods: default
+      vars:
+        BUNDLE_ID: "com.zafarjon.ordo"
+        # App Store Connect record "Ordo: Longevity Menu Ranking", created 2026-08-17.
+        APP_STORE_APPLE_ID: 6802338296
+        XCODE_SCHEME: "App"
+        # CRITICAL. Under Capacitor the page origin is capacitor://localhost, so
+        # a same-origin /api/scan resolves to the app bundle and 404s. This
+        # points the native build at the deployed backend. Wrong or missing =
+        # every scan fails at runtime with no build-time warning.
+        VITE_API_BASE: "https://ordo-one-green.vercel.app"
+      groups:
+        # Create in Codemagic → Environment variables, marked Secure:
+        #   VITE_RC_IOS_KEY   (RevenueCat public iOS SDK key, starts appl_)
+        - ordo_secrets
+
+    integrations:
+      # The App Store Connect API key is per-account, not per-app — the key
+      # already registered for FlipVerdict works here unchanged.
+      app_store_connect: FlipVerdict ASC
+
+    scripts:
+      - name: Install npm dependencies
+        script: |
+          npm ci || npm ci --legacy-peer-deps
+
+      - name: Build web bundle
+        script: npm run build
+
+      - name: Verify the build is actually shippable
+        script: |
+          # Both of these produce an app that builds cleanly and then fails
+          # silently on device — no products at the paywall, or every scan
+          # erroring. Fail loudly here instead of finding out in TestFlight.
+          if ! grep -rq "appl_" dist/assets/*.js; then
+            echo "FATAL: VITE_RC_IOS_KEY did not reach the bundle."
+            echo "Check the ordo_secrets group in Codemagic."
+            exit 1
+          fi
+          echo "RevenueCat iOS key present."
+
+          if ! grep -rq "ordo-one-green.vercel.app" dist/assets/*.js; then
+            echo "FATAL: VITE_API_BASE did not reach the bundle."
+            echo "Every menu scan would fail on device (capacitor://localhost)."
+            exit 1
+          fi
+          echo "API base present."
+
+      - name: Add the iOS platform
+        script: |
+          npm i @capacitor/ios@^8.3.1 --legacy-peer-deps
+          npx cap add ios
+          npx cap sync ios
+
+      - name: Inject camera + photo permission strings
+        script: |
+          # Without these the app crashes the instant the camera opens, and is
+          # rejected. ios/ is regenerated each build, so this runs every time.
+          PLIST="ios/App/App/Info.plist"
+          set_key() {
+            /usr/libexec/PlistBuddy -c "Add :$1 string '$2'" "$PLIST" 2>/dev/null || \
+            /usr/libexec/PlistBuddy -c "Set :$1 '$2'" "$PLIST"
+          }
+          set_key NSCameraUsageDescription \
+            "Ordo uses your camera to photograph the restaurant menu you want ranked."
+          set_key NSPhotoLibraryUsageDescription \
+            "Ordo lets you choose an existing photo of a menu to rank."
+          echo "--- verifying:"
+          /usr/libexec/PlistBuddy -c "Print :NSCameraUsageDescription" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Print :NSPhotoLibraryUsageDescription" "$PLIST"
+
+      - name: Generate app icons
+        script: |
+          # Reads assets/ios/icon-only.png (1024x1024, flat RGB, no alpha).
+          # This is how the icon reaches Apple — there is no icon upload field
+          # for iOS on App Store Connect.
+          npm i -D @capacitor/assets --legacy-peer-deps
+          npx @capacitor/assets generate --ios
+
+      - name: Set the build number
+        script: |
+          cd ios/App
+          agvtool new-version -all "$(($BUILD_NUMBER + 1))"
+
+      - name: Set up code signing
+        script: |
+          set -e
+          keychain initialize
+
+          # Apple issues a distribution certificate against a private key that
+          # YOU generate; the key is never downloadable afterwards. Nothing can
+          # be fetched or created until we supply one.
+          #
+          # Preferred: CERTIFICATE_PRIVATE_KEY set as a secure variable, so every
+          # build reuses the SAME certificate. Reuse the one already created for
+          # FlipVerdict — Apple caps the account at 3 distribution certificates,
+          # and the fallback below burns a new one per build.
+          if [ -n "$CERTIFICATE_PRIVATE_KEY" ]; then
+            echo "Using CERTIFICATE_PRIVATE_KEY from the environment."
+            CERT_KEY_ARG="--certificate-key=@env:CERTIFICATE_PRIVATE_KEY"
+          else
+            echo "WARNING: CERTIFICATE_PRIVATE_KEY is not set."
+            echo "Generating a throwaway key — this creates a NEW Apple"
+            echo "distribution certificate on every build, and Apple allows"
+            echo "only 3 per account. Set CERTIFICATE_PRIVATE_KEY."
+            ssh-keygen -t rsa -b 2048 -m PEM -f /tmp/cert_key -q -N ""
+            CERT_KEY_ARG="--certificate-key=@file:/tmp/cert_key"
+          fi
+
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            $CERT_KEY_ARG \
+            --create
+
+          keychain add-certificates
+          # Capacitor regenerates ios/ with no signing configured, so the
+          # fetched profiles must be written into the project each build.
+          xcode-project use-profiles
+
+      - name: Build the IPA
+        script: |
+          # Capacitor 8 defaults to Swift Package Manager, so there is often NO
+          # .xcworkspace — that file is a CocoaPods artifact. Discover what
+          # actually exists rather than assuming a path.
+          echo "--- iOS project layout:"
+          find ios -maxdepth 3 \( -name "*.xcworkspace" -o -name "*.xcodeproj" \) -print
+          echo "---"
+
+          if [ -d "ios/App/App.xcworkspace" ]; then
+            xcode-project build-ipa \
+              --workspace "ios/App/App.xcworkspace" \
+              --scheme "$XCODE_SCHEME"
+          else
+            PROJ="$(find ios -maxdepth 3 -name '*.xcodeproj' | head -1)"
+            if [ -z "$PROJ" ]; then
+              echo "FATAL: no .xcodeproj or .xcworkspace found under ios/."
+              exit 1
+            fi
+            echo "No workspace (SPM build) — building from project: $PROJ"
+            xcode-project build-ipa --project "$PROJ" --scheme "$XCODE_SCHEME"
+          fi
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        # Deliberately NOT auto-submitting to App Review. The TestFlight device
+        # test is mandatory before anything reaches Apple.
+      email:
+        recipients:
+          - jonzar.kz@gmail.com
+        notify:
+          success: true
+          failure: true

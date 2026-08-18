@@ -1,0 +1,19 @@
+node_modules
+dist
+.vercel
+.env
+.env.*
+!.env.example
+
+# Capacitor regenerates the native project on every Codemagic build
+# (`npx cap add ios`). Committing it would mean the CI build and the checked-in
+# project could drift apart silently — and the Info.plist permission strings are
+# injected by a build step for exactly that reason.
+/ios
+/android
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
