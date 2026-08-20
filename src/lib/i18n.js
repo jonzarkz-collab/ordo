@@ -55,11 +55,11 @@ export const UI = {
     betterOrders: (n) => (n === 1 ? "1 better order" : `${n} better orders`),
     lastPick: (name) => `Last: ${name}`,
     // v3.0 — scans & packs
-    freeToday: (n) => (n === 1 ? "1 free scan today" : `${n} free scans today`),
+    freeLeft: (n) => (n === 1 ? "1 free scan left" : `${n} free scans left`),
     scansLeft: (n) => (n === 1 ? "1 scan left" : `${n} scans left`),
-    outTitle: "You've used today's free scans",
+    outTitle: "You've used your free scans",
     outSub: (n) =>
-      `${n} free scans come back tomorrow — or add credits that never expire.`,
+      `Your ${n} free scans are used. Add scans that never expire — one-time purchase, no subscription.`,
     packCredits: (n) => `${n} scans`,
     packNote: "One-time purchase · never expires · no subscription",
     restore: "Restore purchase",
@@ -129,11 +129,11 @@ export const UI = {
     betterOrders: (n) => `Заказов в плюс: ${n}`,
     lastPick: (name) => `Последний: ${name}`,
     // v3.0 — сканы и пакеты
-    freeToday: (n) => `Бесплатных сканов сегодня: ${n}`,
+    freeLeft: (n) => `Бесплатных сканов: ${n}`,
     scansLeft: (n) => `Осталось сканов: ${n}`,
-    outTitle: "Бесплатные сканы на сегодня закончились",
+    outTitle: "Бесплатные сканы закончились",
     outSub: (n) =>
-      `Завтра снова будет ${n} бесплатных скана — или добавьте сканы, которые не сгорают.`,
+      `${n} бесплатных скана использованы. Добавьте сканы, которые не сгорают — разовая покупка, без подписки.`,
     packCredits: (n) => `${n} сканов`,
     packNote: "Разовая покупка · не сгорает · без подписки",
     restore: "Восстановить покупку",

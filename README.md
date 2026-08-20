@@ -19,9 +19,12 @@ Two rules the design will not break:
   facts behind it. A number on screen is a claim users check and argue with —
   across 341 negative reviews of rival menu apps, disputes over a displayed
   figure were the single largest accuracy complaint.
-- **No subscription, no free trial, nothing auto-renewing.** Three free scans a
-  day, forever, then one-time credit packs. Billing grievances outnumbered
-  product complaints roughly two to one in that same review set.
+- **No subscription, no free trial, nothing auto-renewing.** Three free scans,
+  once, then one-time credit packs. Billing grievances outnumbered product
+  complaints roughly two to one in that same review set. The allowance is
+  lifetime rather than daily because eating out is episodic — a daily quota
+  would hand a moderate diner ~90 free scans a month against a real need of two
+  to eight, putting the paywall permanently out of reach.
 
 ## Layout
 
@@ -29,7 +32,7 @@ Two rules the design will not break:
 |---|---|
 | `api/scan.js` | Vercel function — Claude call, rate limit, optional KV cache |
 | `src/lib/engine.js` | Deterministic scoring, tiers, improvements, EN/RU labels |
-| `src/lib/credits.js` | Free daily quota + paid credit balance |
+| `src/lib/credits.js` | Lifetime free allowance + paid credit balance |
 | `src/lib/purchases.js` | StoreKit consumables via RevenueCat |
 | `src/App.jsx` | All four screens: home → processing → results → detail |
 | `codemagic.yaml` | iOS build → TestFlight |

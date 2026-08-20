@@ -1,5 +1,5 @@
-// Free daily scans + one-time credit packs. No subscription, no free trial,
-// no auto-renew — deliberately.
+// Three free scans, once, then one-time credit packs. No subscription, no free
+// trial, no auto-renew — deliberately.
 //
 // That choice came out of coding 341 one-to-three-star reviews of the menu-app
 // competitors (see ORDO-COMPETITOR-INTEL.md). Billing complaints outweighed
@@ -8,20 +8,30 @@
 // free tier at all. Every one of those is a self-inflicted wound from the
 // trial-into-subscription pattern. We skip the pattern entirely.
 //
-// The free tier has to be genuinely useful forever, not a teaser: three scans a
-// day comfortably covers real restaurant use, so a diner never hits the wall on
-// an ordinary evening out.
+// LIFETIME, not daily. This started as three scans a *day*, which was a
+// miscalibration: eating out is episodic, not daily. Market research on the
+// category found churn attributed directly to frequency —
+//   "I thought the app was decent but don't want to pay for it as I don't eat
+//    out very often."
+// — while the paying user is the opposite profile: "anyone who eats out a lot."
+// A daily allowance hands a moderate diner ~90 free scans a month against a
+// real need of two to eight, so the paywall is never reached and nobody
+// converts. A refill on any schedule has the same defect in slower motion.
+//
+// Three scans, once, is enough to prove the app works on real menus, and a
+// 25-scan pack is a small price against the thing the user already cares about.
+// Nothing here expires and nothing renews, so the honesty claim survives: the
+// user pays once, or not at all.
+//
+// Tuning note: FREE_SCANS is the single number setting the free/paid boundary.
 
-export const FREE_PER_DAY = 3;
+export const FREE_SCANS = 3;
 
-const QUOTA_KEY = "ordo_quota_v1";
+// v2: the stored shape changed from { day, used } to a plain used-count, and
+// the allowance is no longer periodic. Ordo has never shipped, so there is
+// nothing to migrate — the bump just keeps the two shapes from being confused.
+const FREE_USED_KEY = "ordo_free_used_v2";
 const USED_KEY = "ordo_credits_used_v1";
-
-function today() {
-  // Local date, not UTC — the quota should roll over at the diner's midnight.
-  const d = new Date();
-  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-}
 
 function read(key, fallback) {
   try {
@@ -39,15 +49,13 @@ function write(key, value) {
   }
 }
 
-/** Free scans used today, resetting automatically at local midnight. */
-export function freeUsedToday() {
-  const q = read(QUOTA_KEY, null);
-  if (!q || q.day !== today()) return 0;
-  return q.used || 0;
+/** Free scans consumed so far. Never resets. */
+export function freeUsed() {
+  return read(FREE_USED_KEY, 0) || 0;
 }
 
-export function freeLeftToday() {
-  return Math.max(0, FREE_PER_DAY - freeUsedToday());
+export function freeLeft() {
+  return Math.max(0, FREE_SCANS - freeUsed());
 }
 
 /** Paid credits already spent. Granted credits come from RevenueCat. */
@@ -64,21 +72,20 @@ export function creditsLeft(granted) {
  * `granted` is the lifetime pack total reported by the store (see purchases.js).
  */
 export function entitlement(granted) {
-  const free = freeLeftToday();
+  const free = freeLeft();
   const paid = creditsLeft(granted);
   return { free, paid, total: free + paid, canScan: free + paid > 0 };
 }
 
 /**
- * Spend one scan. Free allowance is always consumed first so that purchased
+ * Spend one scan. The free allowance is always consumed first so that purchased
  * credits keep their value — a user who buys a pack should not watch it drain
- * while today's free scans sit unused.
+ * while free scans sit unused.
  * Returns true if a scan was available and has been deducted.
  */
 export function consumeScan(granted) {
-  const free = freeLeftToday();
-  if (free > 0) {
-    write(QUOTA_KEY, { day: today(), used: freeUsedToday() + 1 });
+  if (freeLeft() > 0) {
+    write(FREE_USED_KEY, freeUsed() + 1);
     return true;
   }
   if (creditsLeft(granted) > 0) {

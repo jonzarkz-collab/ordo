@@ -19,7 +19,7 @@ import {
   LOCALES,
 } from "./lib/engine.js";
 import { UI, getLang, saveLang } from "./lib/i18n.js";
-import { FREE_PER_DAY, entitlement, consumeScan } from "./lib/credits.js";
+import { FREE_SCANS, entitlement, consumeScan } from "./lib/credits.js";
 import {
   isNative,
   initPurchases,
@@ -283,7 +283,7 @@ function Home({
           <button className="scan-budget" onClick={onPaywall}>
             {budget.paid > 0
               ? t.scansLeft(budget.total)
-              : t.freeToday(budget.free)}
+              : t.freeLeft(budget.free)}
           </button>
         )}
       </div>
@@ -363,7 +363,7 @@ function Paywall({ packs, budget, onBuy, onRestore, onClose, t }) {
     <div className="script-overlay" onClick={onClose}>
       <div className="paywall-card" onClick={(e) => e.stopPropagation()}>
         <h2 className="paywall-title">{t.outTitle}</h2>
-        <p className="paywall-sub">{t.outSub(FREE_PER_DAY)}</p>
+        <p className="paywall-sub">{t.outSub(FREE_SCANS)}</p>
 
         {packs.length === 0 ? (
           <p className="paywall-empty">{t.packsUnavailable}</p>
