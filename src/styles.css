@@ -416,6 +416,22 @@ section h3 { font-size: 15px; margin-bottom: 8px; color: var(--ink); }
 .pack-note { color: var(--muted); font-size: 13px; margin-top: 14px; text-align: center; line-height: 1.5; }
 .pack-note.strong { color: var(--teal); font-weight: 600; margin-top: 4px; }
 .paywall-empty { color: var(--muted); font-size: 15px; text-align: center; padding: 18px 0; }
+
+/* Store diagnostic, revealed by tapping .paywall-empty three times. Monospace
+   and wrapped so a long product-id list stays readable on a phone. */
+.paywall-diag {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 0 0 8px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: all;
+}
 .paywall-note { color: var(--gold); font-size: 14px; text-align: center; margin-top: 12px; line-height: 1.45; }
 
 .paywall-actions { display: flex; gap: 10px; margin-top: 16px; }

@@ -56,7 +56,15 @@ workflows:
             echo "Check the ordo_secrets group in Codemagic."
             exit 1
           fi
-          echo "RevenueCat iOS key present."
+          # Presence is not enough: a valid key belonging to ANOTHER RevenueCat
+          # project passes this grep, configures fine, and returns that
+          # project's products — which the PACKS filter then drops, leaving an
+          # empty paywall that looks identical to a broken store. Print the
+          # prefix so the build log can be compared against the Ordo project's
+          # API keys page. The iOS SDK key is public by design (it ships inside
+          # the binary), and only a prefix is printed.
+          echo "RevenueCat iOS key present: $(grep -roh 'appl_[A-Za-z0-9]\{8\}' dist/assets/*.js | head -1)…"
+          echo "Must match the iOS public key of RevenueCat project 602b8cca (Ordo)."
 
           if ! grep -rq "ordo-one-green.vercel.app" dist/assets/*.js; then
             echo "FATAL: VITE_API_BASE did not reach the bundle."

@@ -27,6 +27,7 @@ import {
   listPacks,
   buyPack,
   restorePurchases,
+  diagText,
 } from "./lib/purchases.js";
 import {
   CameraIcon,
@@ -333,6 +334,7 @@ const PRIVACY_URL = "https://ordo-one-green.vercel.app/privacy.html";
 function Paywall({ packs, budget, onBuy, onRestore, onClose, t }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
+  const [taps, setTaps] = useState(0);
 
   async function buy(p) {
     setBusy(true);
@@ -366,7 +368,16 @@ function Paywall({ packs, budget, onBuy, onRestore, onClose, t }) {
         <p className="paywall-sub">{t.outSub(FREE_SCANS)}</p>
 
         {packs.length === 0 ? (
-          <p className="paywall-empty">{t.packsUnavailable}</p>
+          <>
+            {/* Three taps reveal why the store came back empty. Hidden rather
+                than removed: there is no Mac here, so this is the only way to
+                read a store failure on a real device, and a shipped user will
+                never find it by accident. */}
+            <p className="paywall-empty" onClick={() => setTaps((n) => n + 1)}>
+              {t.packsUnavailable}
+            </p>
+            {taps >= 3 && <pre className="paywall-diag">{diagText()}</pre>}
+          </>
         ) : (
           <div className="pack-list">
             {packs.map((p) => (

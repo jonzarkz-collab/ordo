@@ -24,6 +24,46 @@ export const isNative = () => Capacitor.isNativePlatform();
 let configured = false;
 let Purchases = null;
 
+/**
+ * Why this exists: there is no Mac in this project, so no Safari Web Inspector
+ * and no console on device. When the paywall came up empty in TestFlight we had
+ * to *infer* the cause from RevenueCat's dashboard and guessed twice. This
+ * records what actually happened so the paywall can show it instead.
+ *
+ * `rawProductIds` is the important one: it lists what the store returned BEFORE
+ * the PACKS filter. If it comes back holding another app's products, the build
+ * is carrying the wrong RevenueCat key — the single failure that looks
+ * identical to a correct setup from both dashboards.
+ *
+ * Only the key PREFIX is kept. The iOS SDK key is public by design (it ships in
+ * every copy of the binary), but a prefix is all that is needed to tell two
+ * projects apart, so there is no reason to hold the rest.
+ */
+export const diag = {
+  native: null,
+  keyPrefix: null,
+  configured: false,
+  configureError: null,
+  offeringsError: null,
+  currentOffering: null,
+  rawProductIds: [],
+};
+
+export function diagText() {
+  const d = diag;
+  return [
+    `native=${d.native}`,
+    `key=${d.keyPrefix || "MISSING"}`,
+    `configured=${d.configured}`,
+    d.configureError ? `configureErr=${d.configureError}` : null,
+    d.offeringsError ? `offeringsErr=${d.offeringsError}` : null,
+    `offering=${d.currentOffering ?? "null"}`,
+    `products=[${d.rawProductIds.join(", ") || "none"}]`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 async function sdk() {
   if (!Purchases) {
     ({ Purchases } = await import("@revenuecat/purchases-capacitor"));
@@ -33,15 +73,26 @@ async function sdk() {
 
 /** Safe to call repeatedly; a no-op on web or without a key. */
 export async function initPurchases() {
+  diag.native = isNative();
   if (configured || !isNative()) return false;
   const apiKey = import.meta.env.VITE_RC_IOS_KEY;
+  diag.keyPrefix = apiKey ? String(apiKey).slice(0, 12) + "…" : null;
   if (!apiKey) {
     console.warn("[ordo] VITE_RC_IOS_KEY missing — packs unavailable.");
     return false;
   }
-  const P = await sdk();
-  await P.configure({ apiKey });
+  try {
+    const P = await sdk();
+    await P.configure({ apiKey });
+  } catch (e) {
+    // Previously this threw out of the calling effect and vanished — the app
+    // just showed an empty paywall with no way to find out why.
+    diag.configureError = String(e?.message || e);
+    console.warn("[ordo] configure failed", e);
+    return false;
+  }
   configured = true;
+  diag.configured = true;
   return true;
 }
 
@@ -84,6 +135,11 @@ export async function listPacks() {
     const P = await sdk();
     const { current } = await P.getOfferings();
     const pkgs = current?.availablePackages || [];
+    diag.currentOffering = current?.identifier ?? null;
+    // Before the filter — this is what actually tells the two failure modes
+    // apart: an empty list means StoreKit returned nothing, while a list of
+    // some OTHER app's products means the build carries the wrong key.
+    diag.rawProductIds = pkgs.map((p) => p?.product?.identifier).filter(Boolean);
     return pkgs
       .filter((p) => PACKS[p.product.identifier])
       .map((p) => ({
@@ -95,6 +151,7 @@ export async function listPacks() {
       }))
       .sort((a, b) => a.price - b.price);
   } catch (e) {
+    diag.offeringsError = String(e?.message || e);
     console.warn("[ordo] getOfferings failed", e);
     return [];
   }
