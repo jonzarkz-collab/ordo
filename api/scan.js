@@ -151,6 +151,29 @@ function rateLimited(req) {
 }
 
 export default async function handler(req, res) {
+  // ---- CORS ----------------------------------------------------------------
+  // On the web the page and this function share an origin, so CORS never
+  // applied. Under Capacitor the page origin is capacitor://localhost while
+  // the API stays on vercel.app — every scan becomes cross-origin. Without
+  // these headers WebKit blocks the request before the handler ever runs and
+  // the app shows the generic "Load failed", which looks like a backend or
+  // billing failure but is purely a missing header.
+  //
+  // "*" is correct here: the endpoint takes no cookies and no Authorization,
+  // so there is no credentialed origin to protect. Setting them via setHeader
+  // (not writeHead) means they survive on every exit path below, including the
+  // NDJSON streaming response.
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Max-Age", "86400");
+
+  // Content-Type: application/json makes the scan a non-simple request, so the
+  // browser sends a preflight first. Answering 405 here blocks every scan.
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "POST only" });
   }
