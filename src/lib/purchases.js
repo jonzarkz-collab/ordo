@@ -74,7 +74,11 @@ async function sdk() {
 /** Safe to call repeatedly; a no-op on web or without a key. */
 export async function initPurchases() {
   diag.native = isNative();
-  if (configured || !isNative()) return false;
+  if (!isNative()) return false;
+  // Already configured is SUCCESS, not failure. Returning false here made the
+  // caller's `if (!ok) return` bail out before listPacks() on any second call,
+  // which would show an empty paywall on a correctly configured store.
+  if (configured) return true;
   const apiKey = import.meta.env.VITE_RC_IOS_KEY;
   diag.keyPrefix = apiKey ? String(apiKey).slice(0, 12) + "…" : null;
   if (!apiKey) {
