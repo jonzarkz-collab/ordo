@@ -75,9 +75,29 @@ workflows:
 
       - name: Add the iOS platform
         script: |
-          npm i @capacitor/ios@^8.3.1 --legacy-peer-deps
+          # @capacitor/ios is a normal dependency in the lockfile now. It used
+          # to be installed here with `npm i --legacy-peer-deps`, which
+          # re-resolved the whole tree AFTER `npm ci` had laid it down — and
+          # Capacitor discovers plugins by scanning that tree during sync.
           npx cap add ios
           npx cap sync ios
+
+      - name: Verify the native RevenueCat plugin is linked
+        script: |
+          # The failure this catches is completely invisible at runtime. With
+          # the native plugin missing, the JS bridge call to
+          # Purchases.configure() has nothing on the other side to call back:
+          # it never resolves AND never rejects. No crash, no error, no console
+          # message the app can catch — just a paywall that says "store
+          # unavailable" forever. Four TestFlight builds were spent proving
+          # that, because every dashboard involved looked perfectly correct.
+          npx cap ls ios | tee capls.txt
+          if ! grep -q "@revenuecat/purchases-capacitor" capls.txt; then
+            echo "FATAL: RevenueCat plugin is NOT linked into the iOS project."
+            echo "The build would install fine and the paywall would be empty."
+            exit 1
+          fi
+          echo "RevenueCat native plugin is linked."
 
       - name: Restrict to iPhone
         script: |
