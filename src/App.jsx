@@ -334,7 +334,6 @@ const PRIVACY_URL = "https://ordo-one-green.vercel.app/privacy.html";
 function Paywall({ packs, budget, onBuy, onRestore, onClose, t }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
-  const [taps, setTaps] = useState(0);
 
   async function buy(p) {
     setBusy(true);
@@ -369,14 +368,14 @@ function Paywall({ packs, budget, onBuy, onRestore, onClose, t }) {
 
         {packs.length === 0 ? (
           <>
-            {/* Three taps reveal why the store came back empty. Hidden rather
-                than removed: there is no Mac here, so this is the only way to
-                read a store failure on a real device, and a shipped user will
-                never find it by accident. */}
-            <p className="paywall-empty" onClick={() => setTaps((n) => n + 1)}>
-              {t.packsUnavailable}
-            </p>
-            {taps >= 3 && <pre className="paywall-diag">{diagText()}</pre>}
+            {/* Was gated behind three taps. Unhidden: two testing rounds came
+                back with nothing because a hidden control is indistinguishable
+                from a control that isn't in the build. There is no Mac here, so
+                this text is the only way to read a store failure on a real
+                device — it has to be impossible to miss. Re-hide it once the
+                store works; it must not ship to App Review. */}
+            <p className="paywall-empty">{t.packsUnavailable}</p>
+            <pre className="paywall-diag">{diagText()}</pre>
           </>
         ) : (
           <div className="pack-list">

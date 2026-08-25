@@ -49,9 +49,16 @@ export const diag = {
   rawProductIds: [],
 };
 
+// Bump on every diagnostic change. Codemagic caches the branch head and will
+// happily rebuild an old commit, so "I tested the new build" has twice meant
+// testing the old one. If this string is not on screen, the build is stale and
+// nothing else in the readout can be trusted.
+const DIAG_BUILD = "diag2";
+
 export function diagText() {
   const d = diag;
   return [
+    `build=${DIAG_BUILD}`,
     `native=${d.native}`,
     `key=${d.keyPrefix || "MISSING"}`,
     `configured=${d.configured}`,
