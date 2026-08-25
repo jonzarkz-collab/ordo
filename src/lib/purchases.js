@@ -41,7 +41,15 @@ let Purchases = null;
  */
 export const diag = {
   native: null,
+  // Capacitor's own answer to "is the native plugin compiled into THIS
+  // binary?". `cap ls` at build time only proves the CLI discovered the
+  // package; this proves the bridge can actually reach it on the device. When
+  // it is false, every call to the plugin hangs forever with no error, which
+  // is the state four TestFlight builds were spent failing to explain.
+  pluginAvailable: null,
   keyPrefix: null,
+  // Which await we are sitting on, so a hang names its own location.
+  step: "not-started",
   configured: false,
   configureError: null,
   offeringsError: null,
@@ -53,14 +61,16 @@ export const diag = {
 // happily rebuild an old commit, so "I tested the new build" has twice meant
 // testing the old one. If this string is not on screen, the build is stale and
 // nothing else in the readout can be trusted.
-const DIAG_BUILD = "diag2";
+const DIAG_BUILD = "diag3";
 
 export function diagText() {
   const d = diag;
   return [
     `build=${DIAG_BUILD}`,
     `native=${d.native}`,
+    `plugin=${d.pluginAvailable}`,
     `key=${d.keyPrefix || "MISSING"}`,
+    `step=${d.step}`,
     `configured=${d.configured}`,
     d.configureError ? `configureErr=${d.configureError}` : null,
     d.offeringsError ? `offeringsErr=${d.offeringsError}` : null,
@@ -82,6 +92,7 @@ async function sdk() {
 export async function initPurchases() {
   diag.native = isNative();
   if (!isNative()) return false;
+  diag.pluginAvailable = Capacitor.isPluginAvailable("Purchases");
   // Already configured is SUCCESS, not failure. Returning false here made the
   // caller's `if (!ok) return` bail out before listPacks() on any second call,
   // which would show an empty paywall on a correctly configured store.
@@ -93,8 +104,23 @@ export async function initPurchases() {
     return false;
   }
   try {
+    diag.step = "importing-sdk";
     const P = await sdk();
-    await P.configure({ apiKey });
+    diag.step = "configuring";
+    // A Capacitor bridge call to a plugin that is not in the binary never
+    // resolves AND never rejects — nothing to catch, nothing logged, the
+    // paywall just stays empty forever. Race it so a hang becomes a visible
+    // failure instead of silence.
+    await Promise.race([
+      P.configure({ apiKey }),
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("configure() never returned after 10s")),
+          10000
+        )
+      ),
+    ]);
+    diag.step = "configured";
   } catch (e) {
     // Previously this threw out of the calling effect and vanished — the app
     // just showed an empty paywall with no way to find out why.

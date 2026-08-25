@@ -93,11 +93,27 @@ workflows:
           # that, because every dashboard involved looked perfectly correct.
           npx cap ls ios | tee capls.txt
           if ! grep -q "@revenuecat/purchases-capacitor" capls.txt; then
-            echo "FATAL: RevenueCat plugin is NOT linked into the iOS project."
-            echo "The build would install fine and the paywall would be empty."
+            echo "FATAL: RevenueCat plugin is NOT discovered by Capacitor."
             exit 1
           fi
-          echo "RevenueCat native plugin is linked."
+          echo "Discovered by Capacitor. Now: HOW is it meant to be linked?"
+
+          # Which integration did Capacitor actually generate? If it made a
+          # Podfile and `pod install` never ran, there is no .xcworkspace, the
+          # archive step below falls into its "SPM build" branch, and it
+          # archives the bare .xcodeproj — with none of the plugins in it.
+          echo "--- Podfile:";      ls -la ios/App/Podfile 2>/dev/null || echo "  none"
+          echo "--- Pods dir:";     ls -d ios/App/Pods 2>/dev/null || echo "  none"
+          echo "--- workspace:";    ls -d ios/App/App.xcworkspace 2>/dev/null || echo "  none"
+          echo "--- SPM manifest:"
+          find ios -name "Package.swift" -maxdepth 4 -exec echo "  {}" \; \
+            -exec grep -n "purchases-capacitor" {} \; || echo "  none"
+
+          if [ -f ios/App/Podfile ] && [ ! -d ios/App/App.xcworkspace ]; then
+            echo "FATAL: CocoaPods integration but no workspace — pods never"
+            echo "installed. Archiving the bare project would drop every plugin."
+            exit 1
+          fi
 
       - name: Restrict to iPhone
         script: |
@@ -222,6 +238,26 @@ workflows:
             echo "No workspace (SPM build) — building from project: $PROJ"
             xcode-project build-ipa --project "$PROJ" --scheme "$XCODE_SCHEME"
           fi
+
+      - name: Prove RevenueCat is actually inside the IPA
+        script: |
+          # `cap ls` only proves the CLI DISCOVERED the package. It says
+          # nothing about whether the pod/SPM target was compiled and linked,
+          # and a build can pass that check while shipping a binary with no
+          # native plugin in it — which is exactly what happened on build 9.
+          # The only honest check is looking inside the archive we are about
+          # to upload.
+          IPA="$(ls build/ios/ipa/*.ipa 2>/dev/null | head -1)"
+          if [ -z "$IPA" ]; then echo "FATAL: no IPA produced."; exit 1; fi
+          echo "--- frameworks inside $IPA:"
+          unzip -l "$IPA" | grep -iE "\.framework|PurchasesHybridCommon|RevenueCat" || true
+          if ! unzip -l "$IPA" | grep -qiE "PurchasesHybridCommon|RevenueCat"; then
+            echo "FATAL: no RevenueCat framework inside the IPA."
+            echo "The app will install and run, and every Purchases call will"
+            echo "hang forever with no error. Do not ship this."
+            exit 1
+          fi
+          echo "RevenueCat is linked into the IPA."
 
     artifacts:
       - build/ios/ipa/*.ipa
