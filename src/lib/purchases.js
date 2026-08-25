@@ -61,7 +61,7 @@ export const diag = {
 // happily rebuild an old commit, so "I tested the new build" has twice meant
 // testing the old one. If this string is not on screen, the build is stale and
 // nothing else in the readout can be trusted.
-const DIAG_BUILD = "diag3";
+const DIAG_BUILD = "diag4";
 
 export function diagText() {
   const d = diag;
