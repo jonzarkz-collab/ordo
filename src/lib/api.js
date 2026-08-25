@@ -59,9 +59,14 @@ export async function scanMenu(payload) {
 
 // SHA-256 of the scan input — lets this device recognize a menu it has
 // already scanned (identical pasted text / re-shared screenshot) instantly.
-export async function hashInput(payload) {
+export async function hashInput(payload, lang = "en") {
   try {
-    const raw = payload.image ? payload.image.data : String(payload.text || "");
+    // Language is part of the key: the same menu produces a different result in
+    // each language now that dish names are translated too. Without this,
+    // switching EN/RU and rescanning replays the cached copy in the OLD
+    // language — which looks exactly like the localisation being broken.
+    const raw =
+      lang + ":" + (payload.image ? payload.image.data : String(payload.text || ""));
     const buf = await crypto.subtle.digest(
       "SHA-256",
       new TextEncoder().encode(raw)

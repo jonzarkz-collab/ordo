@@ -34,19 +34,27 @@ CALIBRATION ANCHORS — identical classic dishes must ALWAYS get identical facts
 - Plov / pilaf with lamb: positives vegetables; refined_carb_base=true (white rice); nova 2; stewed.
 - French fries / картофель фри: deep_fried=true; refined_carb_base=true; fried; nova 3.`;
 
-// The model writes two fields itself — ingredients and section — and without a
-// language rule it writes them in English even when the UI is Russian, so a RU
-// user saw "rice · beef · carrot". The dish NAME is deliberately left alone: it
-// is quoted off the menu and the user has to say it to a waiter.
+// Without an explicit rule the model writes everything in English regardless of
+// the UI, so a Russian user got "rice · beef · carrot". The dish NAME needs the
+// rule too: quoting it off the menu meant an English-mode app displaying
+// "Салат Греческий", which reads as broken localisation — and to an App Store
+// reviewer, broken is broken. A translated name costs a little at the table
+// (you can no longer point at the exact printed words), so v1.1 should show the
+// original underneath in small type rather than choosing one or the other.
 const LANG_RULE = {
-  en: "",
+  en: `
+
+OUTPUT LANGUAGE — ENGLISH. Write name, section and ingredients in English.
+If the menu is in another language, TRANSLATE the dish name into English rather
+than copying or transliterating it ("Салат Греческий" -> "Greek Salad",
+"Плов с говядиной" -> "Beef Plov"). Keep translations short and recognisable.`,
   ru: `
 
-OUTPUT LANGUAGE — RUSSIAN:
-- ingredients: every item in Russian (рис, говядина, морковь, лук, растительное масло). Never English, never transliterated.
-- section: in Russian.
-- name: keep EXACTLY as printed on the menu, in the menu's own language. The user reads it aloud to a waiter, so do not translate or transliterate it.
-Everything you write yourself is Russian; only the dish name is quoted verbatim.`,
+OUTPUT LANGUAGE — RUSSIAN. Write name, section and ingredients in Russian.
+If the menu is in another language, TRANSLATE the dish name into Russian rather
+than copying or transliterating it ("Greek Salad" -> "Салат греческий",
+"Beef Plov" -> "Плов с говядиной"). Ingredients are Russian words (рис,
+говядина, морковь, лук, растительное масло), never English.`,
 };
 
 const DISH_SCHEMA = {

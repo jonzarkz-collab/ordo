@@ -95,7 +95,7 @@ export default function App() {
     // Menu Memory (device): an identical input we've seen before is instant —
     // and free. Re-opening a menu you already scanned costs nothing, because no
     // analysis actually runs.
-    const hash = await hashInput(payload);
+    const hash = await hashInput(payload, lang);
     const hit = findCached(hash);
     if (hit) {
       setResult({ ...hit.result, cached: true });
