@@ -334,6 +334,31 @@ const PRIVACY_URL = "https://ordo-one-green.vercel.app/privacy.html";
 function Paywall({ packs, budget, onBuy, onRestore, onClose, t }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
+  // The store diagnostic must not ship visible to App Review — a reviewer whose
+  // sandbox hiccups would see raw debug text and read the build as unfinished.
+  // But it cannot simply be deleted either: there is no Mac and no device
+  // console, so it is the only way to read a store failure on real hardware.
+  // Compromise: five taps on the title reveals it, and the choice persists, so
+  // a future broken build is still diagnosable without shipping debug UI.
+  const [taps, setTaps] = useState(0);
+  const [showDiag, setShowDiag] = useState(
+    () => {
+      try { return localStorage.getItem("ordo_diag") === "1"; } catch { return false; }
+    }
+  );
+
+  function tapTitle() {
+    const n = taps + 1;
+    setTaps(n);
+    if (n >= 5) {
+      setTaps(0);
+      setShowDiag((was) => {
+        const next = !was;
+        try { localStorage.setItem("ordo_diag", next ? "1" : "0"); } catch { /* private mode */ }
+        return next;
+      });
+    }
+  }
 
   async function buy(p) {
     setBusy(true);
@@ -363,19 +388,17 @@ function Paywall({ packs, budget, onBuy, onRestore, onClose, t }) {
   return (
     <div className="script-overlay" onClick={onClose}>
       <div className="paywall-card" onClick={(e) => e.stopPropagation()}>
-        <h2 className="paywall-title">{t.outTitle}</h2>
+        <h2 className="paywall-title" onClick={tapTitle}>{t.outTitle}</h2>
         <p className="paywall-sub">{t.outSub(FREE_SCANS)}</p>
 
         {packs.length === 0 ? (
           <>
-            {/* Was gated behind three taps. Unhidden: two testing rounds came
-                back with nothing because a hidden control is indistinguishable
-                from a control that isn't in the build. There is no Mac here, so
-                this text is the only way to read a store failure on a real
-                device — it has to be impossible to miss. Re-hide it once the
-                store works; it must not ship to App Review. */}
+            {/* Re-hidden now that the store works, as the earlier note said it
+                must be before App Review. Users and reviewers see only the
+                plain message; five taps on the title bring the diagnostic back
+                if a future build breaks. */}
             <p className="paywall-empty">{t.packsUnavailable}</p>
-            <pre className="paywall-diag">{diagText()}</pre>
+            {showDiag && <pre className="paywall-diag">{diagText()}</pre>}
           </>
         ) : (
           <div className="pack-list">
