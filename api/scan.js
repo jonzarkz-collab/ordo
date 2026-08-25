@@ -34,6 +34,21 @@ CALIBRATION ANCHORS — identical classic dishes must ALWAYS get identical facts
 - Plov / pilaf with lamb: positives vegetables; refined_carb_base=true (white rice); nova 2; stewed.
 - French fries / картофель фри: deep_fried=true; refined_carb_base=true; fried; nova 3.`;
 
+// The model writes two fields itself — ingredients and section — and without a
+// language rule it writes them in English even when the UI is Russian, so a RU
+// user saw "rice · beef · carrot". The dish NAME is deliberately left alone: it
+// is quoted off the menu and the user has to say it to a waiter.
+const LANG_RULE = {
+  en: "",
+  ru: `
+
+OUTPUT LANGUAGE — RUSSIAN:
+- ingredients: every item in Russian (рис, говядина, морковь, лук, растительное масло). Never English, never transliterated.
+- section: in Russian.
+- name: keep EXACTLY as printed on the menu, in the menu's own language. The user reads it aloud to a waiter, so do not translate or transliterate it.
+Everything you write yourself is Russian; only the dish name is quoted verbatim.`,
+};
+
 const DISH_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -265,7 +280,7 @@ export default async function handler(req, res) {
     const msg = await client.messages.create({
       model,
       max_tokens: 16000,
-      system: SYSTEM,
+      system: SYSTEM + LANG_RULE[outLang],
       messages: [{ role: "user", content: userContent }],
       output_config: { format: { type: "json_schema", schema: DISH_SCHEMA } },
     });
