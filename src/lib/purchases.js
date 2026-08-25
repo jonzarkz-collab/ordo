@@ -6,6 +6,16 @@
 // never surface an external payment route).
 
 import { Capacitor } from "@capacitor/core";
+// STATIC import, deliberately. This was `await import(...)` inside sdk(), which
+// Vite code-splits into a separate chunk fetched at runtime. Inside the iOS
+// WKWebView that fetch never settled: the await hung forever, neither resolving
+// nor rejecting, so there was nothing to catch and the paywall sat empty with
+// step=importing-sdk. A static import puts the module in the main bundle, so
+// there is no runtime chunk fetch left to hang on.
+//
+// Safe on web: importing this module only registers a plugin proxy, it does not
+// call anything native. Every native call is still gated behind isNative().
+import { Purchases } from "@revenuecat/purchases-capacitor";
 
 // Pack size lives here, keyed by product ID. Price does NOT: it comes from
 // StoreKit at runtime as `priceString`, already localised and converted for the
@@ -22,7 +32,6 @@ export const PACKS = {
 export const isNative = () => Capacitor.isNativePlatform();
 
 let configured = false;
-let Purchases = null;
 
 /**
  * Why this exists: there is no Mac in this project, so no Safari Web Inspector
@@ -61,7 +70,7 @@ export const diag = {
 // happily rebuild an old commit, so "I tested the new build" has twice meant
 // testing the old one. If this string is not on screen, the build is stale and
 // nothing else in the readout can be trusted.
-const DIAG_BUILD = "diag4";
+const DIAG_BUILD = "diag5";
 
 export function diagText() {
   const d = diag;
@@ -81,10 +90,14 @@ export function diagText() {
     .join("\n");
 }
 
-async function sdk() {
-  if (!Purchases) {
-    ({ Purchases } = await import("@revenuecat/purchases-capacitor"));
-  }
+/**
+ * Kept as a function so the call sites below read unchanged, but it no longer
+ * loads anything — the module is imported statically at the top of the file.
+ * It now only asserts the import actually produced a usable object, so a
+ * packaging failure is reported instead of surfacing later as a null deref.
+ */
+function sdk() {
+  if (!Purchases) throw new Error("purchases-capacitor module did not load");
   return Purchases;
 }
 
@@ -104,8 +117,11 @@ export async function initPurchases() {
     return false;
   }
   try {
-    diag.step = "importing-sdk";
-    const P = await sdk();
+    // No longer an import — the module is already in the bundle. Kept as a
+    // distinct step so the readout still distinguishes "module missing" from
+    // "configure hung".
+    diag.step = "resolving-sdk";
+    const P = sdk();
     diag.step = "configuring";
     // A Capacitor bridge call to a plugin that is not in the binary never
     // resolves AND never rejects — nothing to catch, nothing logged, the
@@ -147,7 +163,7 @@ export async function initPurchases() {
 export async function grantedCredits() {
   if (!configured) return 0;
   try {
-    const P = await sdk();
+    const P = sdk();
     const { customerInfo } = await P.getCustomerInfo();
     return sumGrant(customerInfo);
   } catch (e) {
@@ -169,7 +185,7 @@ function sumGrant(customerInfo) {
 export async function listPacks() {
   if (!configured) return [];
   try {
-    const P = await sdk();
+    const P = sdk();
     const { current } = await P.getOfferings();
     const pkgs = current?.availablePackages || [];
     diag.currentOffering = current?.identifier ?? null;
@@ -196,7 +212,7 @@ export async function listPacks() {
 
 /** Returns the new lifetime grant, or null if the user cancelled. */
 export async function buyPack(pack) {
-  const P = await sdk();
+  const P = sdk();
   try {
     const { customerInfo } = await P.purchasePackage({ aPackage: pack.pkg });
     return sumGrant(customerInfo);
@@ -212,7 +228,7 @@ export async function buyPack(pack) {
 
 /** Apple requires a visible restore control wherever purchases are offered. */
 export async function restorePurchases() {
-  const P = await sdk();
+  const P = sdk();
   const { customerInfo } = await P.restorePurchases();
   return sumGrant(customerInfo);
 }
