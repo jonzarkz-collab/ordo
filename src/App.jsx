@@ -126,12 +126,22 @@ export default function App() {
     }
   }
 
+  /**
+   * Returns how many scans this purchase ADDED, or null if the user cancelled.
+   *
+   * The delta matters: `buyPack` reports the LIFETIME pack total from the
+   * store, not this purchase. A user on their second 25-pack correctly jumps
+   * from 25 to 50, but with no feedback that reads as "I bought 25 and got 50"
+   * — which is exactly how it was first reported as a billing bug. Closing the
+   * paywall is left to the caller so the confirmation is visible first.
+   */
   async function onBuy(pack) {
+    const before = granted;
     const g = await buyPack(pack);
-    if (g === null) return; // user cancelled — not an error
+    if (g === null) return null; // user cancelled — not an error
     setGranted(g);
     refreshBudget(g);
-    setPaywall(false);
+    return Math.max(0, g - before);
   }
 
   async function onRestore() {
@@ -364,7 +374,12 @@ function Paywall({ packs, budget, onBuy, onRestore, onClose, t }) {
     setBusy(true);
     setNote("");
     try {
-      await onBuy(p);
+      const added = await onBuy(p);
+      if (added === null) return; // cancelled — leave the paywall open
+      // Confirm what this purchase added, then close. Without this the balance
+      // just changes and the user cannot tell a correct total from a wrong one.
+      setNote(t.creditsAdded(added));
+      setTimeout(onClose, 1600);
     } catch {
       setNote(t.purchaseFailed);
     } finally {

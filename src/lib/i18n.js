@@ -63,6 +63,11 @@ export const UI = {
     packCredits: (n) => `${n} scans`,
     packNote: "One-time purchase · never expires · no subscription",
     restore: "Restore purchase",
+    // Shown after a purchase so the user sees WHAT was added, not just a new
+    // total. Without it, correct lifetime accumulation (buy 25 twice, see 50)
+    // is indistinguishable from a billing bug — which is exactly how it was
+    // first reported.
+    creditsAdded: (n) => `${n} scans added`,
     restored: (n) => `Restored — ${n} scans on this account`,
     restoreNone: "No previous purchase found on this Apple ID.",
     packsUnavailable: "The store isn't reachable right now. Try again shortly.",
@@ -137,6 +142,7 @@ export const UI = {
     packCredits: (n) => `${n} сканов`,
     packNote: "Разовая покупка · не сгорает · без подписки",
     restore: "Восстановить покупку",
+    creditsAdded: (n) => `Добавлено сканов: ${n}`,
     restored: (n) => `Восстановлено — сканов на аккаунте: ${n}`,
     restoreNone: "Прошлых покупок на этом Apple ID не найдено.",
     packsUnavailable: "Магазин сейчас недоступен. Попробуйте чуть позже.",
