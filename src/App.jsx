@@ -313,7 +313,12 @@ function Home({
         </div>
       </div>
       <header className="brand">
-        <div className="logo">
+        {/* Seven taps on the logo wipes the local counters and reloads.
+            It lives HERE, not on the scan counter: that button opens the
+            paywall on the first tap, and the overlay then covers it, so taps
+            two onward never reach the handler. The logo has no other action,
+            so the gesture can actually complete. */}
+        <div className="logo" onPointerDown={bumpResetTaps}>
           ORD<span className="logo-o">O</span>
         </div>
         <p className="tagline">{t.tagline}</p>
@@ -334,13 +339,6 @@ function Home({
           <button
             className="scan-budget"
             onClick={onPaywall}
-            // Seven taps on the scan counter wipes the local counters and
-            // reloads, returning the app to a genuine first-run state. Needed
-            // because Apple's receipt is permanent: once a sandbox Apple ID has
-            // bought packs, there is no other way to reach a clean state for a
-            // review recording. Seven, and on a control whose normal action is
-            // simply "open the paywall", so it cannot be hit by accident.
-            onPointerDown={bumpResetTaps}
           >
             {budget.paid > 0
               ? t.scansLeft(budget.total)
