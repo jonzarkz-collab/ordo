@@ -160,15 +160,23 @@ export async function initPurchases() {
  * grant back. Spend is tracked locally, so a restore is mildly generous rather
  * than punishing. That is the correct direction to err.
  */
+/**
+ * Returns null — NOT 0 — when the store could not be reached.
+ *
+ * The distinction is load-bearing. The credit baseline is anchored to the first
+ * lifetime total this install sees, so anchoring at a fabricated 0 because the
+ * store was down would later hand the user every historical purchase for free.
+ * "Unknown" and "none" must not collapse into the same value.
+ */
 export async function grantedCredits() {
-  if (!configured) return 0;
+  if (!configured) return null;
   try {
     const P = sdk();
     const { customerInfo } = await P.getCustomerInfo();
     return sumGrant(customerInfo);
   } catch (e) {
     console.warn("[ordo] getCustomerInfo failed", e);
-    return 0;
+    return null;
   }
 }
 

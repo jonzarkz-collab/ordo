@@ -33,6 +33,21 @@ export const FREE_SCANS = 3;
 const FREE_USED_KEY = "ordo_free_used_v2";
 const USED_KEY = "ordo_credits_used_v1";
 
+// Lifetime total already on the Apple ID when this install first saw the store.
+//
+// Apple's receipt is permanent and cumulative: every consumable ever bought
+// with an Apple ID stays in it forever, and RevenueCat re-syncs the whole
+// receipt on any purchase or restore. So the raw lifetime figure only ever
+// grows. Without a baseline, a fresh install of Ordo on an Apple ID that had
+// bought two 25-packs opened with 50 scans already granted, and buying one more
+// pack read 75 — free credits for anyone who reinstalls, and untestable.
+//
+// Anchoring at first sight means a reinstall starts at zero, and only NEW
+// purchases count. A user who legitimately wants their old credits back taps
+// Restore, which zeroes the baseline — an explicit action, which is exactly the
+// behaviour Apple expects a restore button to have.
+const BASELINE_KEY = "ordo_grant_baseline_v1";
+
 function read(key, fallback) {
   try {
     return JSON.parse(localStorage.getItem(key)) ?? fallback;
@@ -63,8 +78,40 @@ export function creditsUsed() {
   return read(USED_KEY, 0) || 0;
 }
 
+/**
+ * The lifetime total anchored at first sight, or null when the store has not
+ * yet reported a trustworthy figure on this install.
+ */
+export function grantBaseline() {
+  const v = read(BASELINE_KEY, null);
+  return typeof v === "number" ? v : null;
+}
+
+/**
+ * Anchor the baseline the first time a real lifetime total is known. Call this
+ * ONLY with a figure that actually came back from the store — passing 0 because
+ * the store was unreachable would anchor at zero and hand the user every
+ * historical purchase the next time it loads.
+ */
+export function ensureBaseline(lifetime) {
+  const existing = grantBaseline();
+  if (existing !== null) return existing;
+  const next = Math.max(0, lifetime || 0);
+  write(BASELINE_KEY, next);
+  return next;
+}
+
+/** Restore: count the user's whole purchase history again, deliberately. */
+export function clearBaseline() {
+  write(BASELINE_KEY, 0);
+}
+
 export function creditsLeft(granted) {
-  return Math.max(0, (granted || 0) - creditsUsed());
+  const base = grantBaseline();
+  // No trustworthy lifetime figure yet — report nothing rather than guessing.
+  // Erring toward zero is safe: the paywall simply offers a purchase.
+  if (base === null) return 0;
+  return Math.max(0, (granted || 0) - base - creditsUsed());
 }
 
 /**

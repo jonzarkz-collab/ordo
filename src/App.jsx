@@ -19,7 +19,13 @@ import {
   LOCALES,
 } from "./lib/engine.js";
 import { UI, getLang, saveLang } from "./lib/i18n.js";
-import { FREE_SCANS, entitlement, consumeScan } from "./lib/credits.js";
+import {
+  FREE_SCANS,
+  entitlement,
+  consumeScan,
+  ensureBaseline,
+  clearBaseline,
+} from "./lib/credits.js";
 import {
   isNative,
   initPurchases,
@@ -79,8 +85,14 @@ export default function App() {
       const ok = await initPurchases();
       if (!ok) return;
       const g = await grantedCredits();
-      setGranted(g);
-      setBudget(entitlement(g));
+      // null means the store did not answer. Anchoring the baseline on that
+      // would treat "unknown" as "no purchases" and later grant the user their
+      // entire Apple ID purchase history for free.
+      if (g !== null) {
+        ensureBaseline(g);
+        setGranted(g);
+        setBudget(entitlement(g));
+      }
       setPacks(await listPacks());
     })();
   }, [metered]);
@@ -146,6 +158,11 @@ export default function App() {
 
   async function onRestore() {
     const g = await restorePurchases();
+    // Restore is the user explicitly asking for their whole purchase history
+    // back, so the baseline is dropped and every past pack counts again. This
+    // is the one path that re-grants across a reinstall, and it is deliberate:
+    // silent re-granting is what made credits testable-by-reinstall before.
+    clearBaseline();
     setGranted(g);
     refreshBudget(g);
     return g;
