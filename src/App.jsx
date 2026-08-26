@@ -25,6 +25,7 @@ import {
   consumeScan,
   ensureBaseline,
   clearBaseline,
+  resetLocalState,
 } from "./lib/credits.js";
 import {
   isNative,
@@ -253,6 +254,28 @@ function Home({
   const fileRef = useRef(null);
   const [allHist, setAllHist] = useState(false);
 
+  // Seven taps on the scan counter wipes local counters and reloads. See
+  // resetLocalState() for why this has to exist: Apple's purchase receipt is
+  // permanent, so once a sandbox Apple ID has bought packs there is no other
+  // route back to a clean first-run state for a review recording.
+  const resetTaps = useRef(0);
+  const resetTimer = useRef(null);
+
+  function bumpResetTaps() {
+    resetTaps.current += 1;
+    clearTimeout(resetTimer.current);
+    // Taps must be consecutive; a stray tap decays instead of accumulating
+    // across a whole session.
+    resetTimer.current = setTimeout(() => { resetTaps.current = 0; }, 2500);
+    if (resetTaps.current >= 7) {
+      resetTaps.current = 0;
+      clearTimeout(resetTimer.current);
+      resetLocalState();
+      // Full reload so the baseline re-anchors from the store on next boot.
+      window.location.reload();
+    }
+  }
+
   // Gate before the photo picker, not after. Making someone frame a menu and
   // only then telling them they're out of scans is the small cruelty that
   // earns a one-star review.
@@ -308,7 +331,17 @@ function Home({
             delivery-app screenshots work through the same single button. */}
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
         {metered && (
-          <button className="scan-budget" onClick={onPaywall}>
+          <button
+            className="scan-budget"
+            onClick={onPaywall}
+            // Seven taps on the scan counter wipes the local counters and
+            // reloads, returning the app to a genuine first-run state. Needed
+            // because Apple's receipt is permanent: once a sandbox Apple ID has
+            // bought packs, there is no other way to reach a clean state for a
+            // review recording. Seven, and on a control whose normal action is
+            // simply "open the paywall", so it cannot be hit by accident.
+            onPointerDown={bumpResetTaps}
+          >
             {budget.paid > 0
               ? t.scansLeft(budget.total)
               : t.freeLeft(budget.free)}

@@ -106,6 +106,28 @@ export function clearBaseline() {
   write(BASELINE_KEY, 0);
 }
 
+/**
+ * Wipe every local counter: free scans used, paid scans spent, and the grant
+ * baseline. On the next launch the baseline re-anchors to whatever the store
+ * reports, so the app returns to a genuine first-run state — three free scans
+ * and zero paid — without deleting and reinstalling.
+ *
+ * This exists because Apple's purchase receipt is permanent: once a sandbox
+ * Apple ID has bought a few packs there is otherwise NO way to reach a clean
+ * state for a review recording. Reachable only through a deliberate hidden
+ * gesture (see App.jsx); it is not a user-facing feature, and it grants nothing
+ * that was paid for — it only forgets local counters.
+ */
+export function resetLocalState() {
+  try {
+    localStorage.removeItem(FREE_USED_KEY);
+    localStorage.removeItem(USED_KEY);
+    localStorage.removeItem(BASELINE_KEY);
+  } catch {
+    /* private mode — nothing was persisted to clear */
+  }
+}
+
 export function creditsLeft(granted) {
   const base = grantBaseline();
   // No trustworthy lifetime figure yet — report nothing rather than guessing.
