@@ -170,11 +170,59 @@ workflows:
 
       - name: Generate app icons
         script: |
-          # Reads assets/ios/icon-only.png (1024x1024, flat RGB, no alpha).
-          # This is how the icon reaches Apple — there is no icon upload field
+          set -e
+          # THIS STEP SHIPPED A PLACEHOLDER ICON IN BUILD 14 AND GOT THE APP
+          # REJECTED under guideline 2.3.8 on 2026-09-02. Read before editing.
+          #
+          # @capacitor/assets reads its source images from the assets/ ROOT.
+          # The icon used to live at assets/ios/icon-only.png, which the tool
+          # never looks at: it printed "No assets found in the asset path"
+          # and then EXITED 0. A green build, and the stock blue Capacitor
+          # icon went to Apple. The path is assets/icon-only.png — not
+          # assets/ios/, not assets/icons/.
+          #
+          # This is how the icon reaches Apple; there is no icon upload field
           # for iOS on App Store Connect.
           npm i -D @capacitor/assets --legacy-peer-deps
-          npx @capacitor/assets generate --ios
+
+          if [ ! -f assets/icon-only.png ]; then
+            echo "FATAL: assets/icon-only.png is missing."
+            echo "@capacitor/assets reads the assets/ root. Without this file"
+            echo "it no-ops with exit 0 and Apple gets the placeholder icon."
+            exit 1
+          fi
+
+          # Capture the output: a successful run prints "CREATE ios icon".
+          # Nothing else distinguishes success from the silent no-op.
+          npx @capacitor/assets generate --ios 2>&1 | tee /tmp/assets_gen.log
+          if ! grep -q "CREATE ios icon" /tmp/assets_gen.log; then
+            echo "FATAL: no iOS icon was generated (tool exits 0 when it finds"
+            echo "no assets, so exit status proves nothing). Build 14 shipped"
+            echo "a placeholder exactly this way."
+            exit 1
+          fi
+
+          # Belt and braces: the generated icon must not still be the stock
+          # Capacitor artwork. The real icon is a 1024px opaque RGB file well
+          # over 100 KB; the placeholder is a small icon WITH an alpha channel.
+          ICON="ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png"
+          python3 - "$ICON" <<'PY'
+          import struct, sys
+          p = sys.argv[1]
+          d = open(p, 'rb').read()
+          w, h = struct.unpack('>II', d[16:24])
+          color_type = d[25]
+          print(f"generated icon: {w}x{h}, color type {color_type}, {len(d)} bytes")
+          if (w, h) != (1024, 1024):
+              sys.exit(f"FATAL: icon is {w}x{h}, expected 1024x1024.")
+          if color_type == 6:
+              sys.exit("FATAL: icon has an alpha channel. Apple rejects that, "
+                       "and the placeholder is the transparent one.")
+          if len(d) < 100_000:
+              sys.exit("FATAL: icon is suspiciously small — likely the stock "
+                       "Capacitor placeholder rather than the Ordo artwork.")
+          print("OK: real Ordo icon, opaque, full size.")
+          PY
 
       - name: Set the build number
         script: |
