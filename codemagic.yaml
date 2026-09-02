@@ -202,9 +202,11 @@ workflows:
             exit 1
           fi
 
-          # Belt and braces: the generated icon must not still be the stock
-          # Capacitor artwork. The real icon is a 1024px opaque RGB file well
-          # over 100 KB; the placeholder is a small icon WITH an alpha channel.
+          # Belt and braces on the emitted file. Deliberately NO file-size
+          # threshold: flat vector-style artwork compresses to ~20 KB quite
+          # legitimately, and a size floor false-failed the FlipVerdict build
+          # on 2026-09-02. The "CREATE ios icon" grep above is the real proof
+          # that the tool generated from OUR source rather than no-opping.
           ICON="ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png"
           python3 - "$ICON" <<'PY'
           import struct, sys
@@ -218,9 +220,6 @@ workflows:
           if color_type == 6:
               sys.exit("FATAL: icon has an alpha channel. Apple rejects that, "
                        "and the placeholder is the transparent one.")
-          if len(d) < 100_000:
-              sys.exit("FATAL: icon is suspiciously small — likely the stock "
-                       "Capacitor placeholder rather than the Ordo artwork.")
           print("OK: real Ordo icon, opaque, full size.")
           PY
 
