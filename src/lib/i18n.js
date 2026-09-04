@@ -62,14 +62,14 @@ export const UI = {
       `Your ${n} free scans are used. Add scans that never expire — one-time purchase, no subscription.`,
     packCredits: (n) => `${n} scans`,
     packNote: "One-time purchase · never expires · no subscription",
-    restore: "Restore purchase",
+    // restore / restored / restoreNone deleted with the restore button —
+    // "No previous purchase found on this Apple ID." is the exact string
+    // App Review screenshotted when rejecting build 1.0 (15) under 3.1.1.
     // Shown after a purchase so the user sees WHAT was added, not just a new
     // total. Without it, correct lifetime accumulation (buy 25 twice, see 50)
     // is indistinguishable from a billing bug — which is exactly how it was
     // first reported.
     creditsAdded: (n) => `${n} scans added`,
-    restored: (n) => `Restored — ${n} scans on this account`,
-    restoreNone: "No previous purchase found on this Apple ID.",
     packsUnavailable: "The store isn't reachable right now. Try again shortly.",
     maybeLater: "Not now",
     terms: "Terms of Use",
@@ -141,10 +141,7 @@ export const UI = {
       `${n} бесплатных скана использованы. Добавьте сканы, которые не сгорают — разовая покупка, без подписки.`,
     packCredits: (n) => `${n} сканов`,
     packNote: "Разовая покупка · не сгорает · без подписки",
-    restore: "Восстановить покупку",
     creditsAdded: (n) => `Добавлено сканов: ${n}`,
-    restored: (n) => `Восстановлено — сканов на аккаунте: ${n}`,
-    restoreNone: "Прошлых покупок на этом Apple ID не найдено.",
     packsUnavailable: "Магазин сейчас недоступен. Попробуйте чуть позже.",
     maybeLater: "Не сейчас",
     terms: "Условия использования",

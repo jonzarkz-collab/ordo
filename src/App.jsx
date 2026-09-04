@@ -24,7 +24,6 @@ import {
   entitlement,
   consumeScan,
   ensureBaseline,
-  clearBaseline,
   resetLocalState,
 } from "./lib/credits.js";
 import {
@@ -33,7 +32,6 @@ import {
   grantedCredits,
   listPacks,
   buyPack,
-  restorePurchases,
   diagText,
 } from "./lib/purchases.js";
 import {
@@ -157,17 +155,8 @@ export default function App() {
     return Math.max(0, g - before);
   }
 
-  async function onRestore() {
-    const g = await restorePurchases();
-    // Restore is the user explicitly asking for their whole purchase history
-    // back, so the baseline is dropped and every past pack counts again. This
-    // is the one path that re-grants across a reinstall, and it is deliberate:
-    // silent re-granting is what made credits testable-by-reinstall before.
-    clearBaseline();
-    setGranted(g);
-    refreshBudget(g);
-    return g;
-  }
+  // onRestore() was removed with the restore button — see lib/purchases.js for
+  // why (Guideline 3.1.1: consumables cannot be restored via the Apple Account).
 
   function openDish(dish) {
     setSelected(dish);
@@ -227,7 +216,6 @@ export default function App() {
           packs={packs}
           budget={budget}
           onBuy={onBuy}
-          onRestore={onRestore}
           onClose={() => setPaywall(false)}
           t={t}
         />
@@ -380,16 +368,17 @@ function Home({
 
 /* ---------------- Paywall ---------------- */
 
-// Consumable packs only. Apple requires that anywhere purchases are offered we
-// show each product's title, its price as StoreKit reports it, a Restore
-// control, and links to the Terms and Privacy Policy. There is deliberately no
-// auto-renewal disclosure here because nothing renews — that is the whole point
-// of the model.
+// Consumable packs only. Anywhere purchases are offered we show each product's
+// title, its price as StoreKit reports it, and links to the Terms and Privacy
+// Policy. There is deliberately no auto-renewal disclosure because nothing
+// renews — that is the whole point of the model — and deliberately NO restore
+// control: the restore requirement covers non-consumables and subscriptions,
+// and offering one for consumables is what Apple rejected under 3.1.1.
 const APPLE_EULA =
   "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";
 const PRIVACY_URL = "https://ordo-one-green.vercel.app/privacy.html";
 
-function Paywall({ packs, budget, onBuy, onRestore, onClose, t }) {
+function Paywall({ packs, budget, onBuy, onClose, t }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   // The store diagnostic must not ship visible to App Review — a reviewer whose
@@ -435,19 +424,6 @@ function Paywall({ packs, budget, onBuy, onRestore, onClose, t }) {
     }
   }
 
-  async function restore() {
-    setBusy(true);
-    setNote("");
-    try {
-      const g = await onRestore();
-      setNote(g > 0 ? t.restored(g) : t.restoreNone);
-    } catch {
-      setNote(t.restoreNone);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <div className="script-overlay" onClick={onClose}>
       <div className="paywall-card" onClick={(e) => e.stopPropagation()}>
@@ -486,9 +462,6 @@ function Paywall({ packs, budget, onBuy, onRestore, onClose, t }) {
         {note && <p className="paywall-note">{note}</p>}
 
         <div className="paywall-actions">
-          <button className="btn ghost small" disabled={busy} onClick={restore}>
-            {t.restore}
-          </button>
           <button className="btn ghost small" onClick={onClose}>
             {t.maybeLater}
           </button>

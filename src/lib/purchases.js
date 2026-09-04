@@ -234,9 +234,22 @@ export async function buyPack(pack) {
   }
 }
 
-/** Apple requires a visible restore control wherever purchases are offered. */
-export async function restorePurchases() {
-  const P = sdk();
-  const { customerInfo } = await P.restorePurchases();
-  return sumGrant(customerInfo);
-}
+// restorePurchases() was REMOVED — it is what got build 1.0 (15) rejected under
+// Guideline 3.1.1 on 2026-09-04.
+//
+// The old comment here said "Apple requires a visible restore control wherever
+// purchases are offered." That is true for non-consumables and auto-renewable
+// subscriptions. It is NOT true for consumables, and every product in this app
+// is a consumable. StoreKit's restore prompts for the Apple Account password
+// and then, by design, returns nothing for consumables — so the reviewer saw a
+// password prompt followed by "No previous purchase found on this Apple ID."
+//
+// Apple's instruction: implement your own restore mechanism if consumable
+// restores are wanted. That needs a server record keyed to a stable identity,
+// which this app does not have (no accounts, local-first). Until it does, there
+// is no restore control at all — which is the compliant state for consumables.
+//
+// Note grantedCredits() above already reads the lifetime grant from
+// RevenueCat via getCustomerInfo(), and that call does NOT prompt for a
+// password. It covers everything the button did except recovery after a full
+// reinstall, which genuinely cannot be done without a backend.
