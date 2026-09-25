@@ -26,6 +26,8 @@ RULES:
 - Be FAST and terse: ingredients = only the 3-6 defining items (including the inferred fat/sauce); section = one short word or empty. No prose anywhere.
 - Menu text may be messy: a single run-on line, fragmented OCR, prices glued to names. Still extract every dish you can identify — an imperfect list beats an empty one.
 - Do not invent dishes that are not on the menu.
+- price: copy the dish's price EXACTLY as printed ("$14", "12.50", "450 ₽", "25.000đ"), keeping a currency symbol only if the menu prints one. If sizes are priced separately, use the first price. If no price is printed for that dish, use an empty string. Never guess, round or convert a price.
+- is_meal: true for a full meal or main-course portion (mains, meal salads, bowls, sandwiches, a soup served as a meal); false for sides, sauces, add-ons, bread, small starters, desserts and drinks.
 
 CALIBRATION ANCHORS — identical classic dishes must ALWAYS get identical facts. Match these exactly unless the menu explicitly says otherwise:
 - Greek salad (tomato, cucumber, feta, olives, olive oil): positives vegetables+healthy_fat+polyphenols; high_sodium=true; added_sugar_sauce=false; creamy_sauce=false; nova 1; raw.
@@ -112,8 +114,16 @@ const DISH_SCHEMA = {
             },
           },
           confidence: { type: "string", enum: ["high", "medium", "low"] },
+          price: {
+            type: "string",
+            description: "Price exactly as printed on the menu, or empty string if none is printed. Never guessed or converted.",
+          },
+          is_meal: {
+            type: "boolean",
+            description: "true = a full meal / main-course portion; false = side, sauce, add-on, bread, small starter, dessert or drink",
+          },
         },
-        required: ["name", "section", "ingredients", "cooking_method", "nova", "flags", "positives", "confidence"],
+        required: ["name", "section", "ingredients", "cooking_method", "nova", "flags", "positives", "confidence", "price", "is_meal"],
       },
     },
   },

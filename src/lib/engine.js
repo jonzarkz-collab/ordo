@@ -7,7 +7,7 @@
 // v2.0 calibration: processed_meat is graduated (primary protein vs garnish),
 // high_sodium softened — a squeeze of salt is not a hot dog.
 
-export const ENGINE_VERSION = "2.0.0";
+export const ENGINE_VERSION = "2.1.0"; // 2.1: price + is_meal per dish
 
 export const POSITIVE_POINTS = {
   vegetables: 12,
@@ -402,7 +402,50 @@ export function buildResult(raw, lang = "en") {
       .map((k) => loc.concerns[k])
       .filter(Boolean),
     improvements: buildImprovements(facts, lang),
+    // As printed on the menu — shown verbatim, never converted or guessed.
+    price: typeof raw.price === "string" ? raw.price.trim().slice(0, 24) : "",
+    meal: raw.is_meal !== false,
   };
+}
+
+// ---- Price + best value ---------------------------------------------------
+// Asked for by a real diner at the first demo ("I'm eating healthy, but I'm on
+// a budget too"), and by rival reviewers. parsePrice only has to put prices
+// from ONE menu in order, and a menu is always one currency, so no conversion
+// and no currency detection is needed — just a number.
+
+export function parsePrice(str) {
+  const m = String(str || "").match(/\d[\d\s  .,']*/);
+  if (!m) return null; // "MP", "market price", empty
+  let s = m[0].replace(/[\s  ']/g, "").replace(/[.,]+$/, "");
+  const seps = s.match(/[.,]/g) || [];
+  if (seps.length > 1) {
+    // "1,234.50" / "1.234,50": the LAST separator is the decimal point.
+    const last = Math.max(s.lastIndexOf("."), s.lastIndexOf(","));
+    s = s.slice(0, last).replace(/[.,]/g, "") + "." + s.slice(last + 1);
+  } else if (seps.length === 1) {
+    // One separator + exactly three digits is a thousands mark ("1,200",
+    // "25.000đ"); anything else is a decimal ("12.50", "12,50").
+    s = /^\d+[.,]\d{3}$/.test(s) ? s.replace(/[.,]/, "") : s.replace(",", ".");
+  }
+  const n = parseFloat(s);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+// The cheapest full meal rated Good or better. Sides and drinks are excluded,
+// or "best value" would be a side salad every time. Offered only when at least
+// three dishes carry a readable price — below that it is a coin toss.
+export function bestValue(dishes) {
+  const priced = (dishes || []).filter((d) => parsePrice(d.price) !== null);
+  if (priced.length < 3) return null;
+  let best = null;
+  for (const d of priced) {
+    if (d.score < 65 || d.meal === false) continue;
+    const p = parsePrice(d.price);
+    const bp = best && parsePrice(best.price);
+    if (!best || p < bp || (p === bp && d.score > best.score)) best = d;
+  }
+  return best;
 }
 
 export function rankDishes(rawDishes, lang = "en") {

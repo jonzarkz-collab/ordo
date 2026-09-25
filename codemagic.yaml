@@ -23,6 +23,11 @@ workflows:
         # App Store Connect record "Ordo: Longevity Menu Ranking", created 2026-08-17.
         APP_STORE_APPLE_ID: 6802338296
         XCODE_SCHEME: "App"
+        # The version users see. Apple refuses a build whose marketing version
+        # differs from the App Store version record it is attached to.
+        # Capacitor's template hardcodes 1.0, which is why 1.0 needed no step.
+        # Bump for every new App Store version.
+        MARKETING_VERSION: "1.0.2"
         # CRITICAL. Under Capacitor the page origin is capacitor://localhost, so
         # a same-origin /api/scan resolves to the app bundle and 404s. This
         # points the native build at the deployed backend. Wrong or missing =
@@ -223,10 +228,18 @@ workflows:
           print("OK: real Ordo icon, opaque, full size.")
           PY
 
-      - name: Set the build number
+      - name: Set the marketing version and build number
         script: |
+          set -e
           cd ios/App
           agvtool new-version -all "$(($BUILD_NUMBER + 1))"
+          agvtool new-marketing-version "$MARKETING_VERSION"
+          agvtool what-marketing-version -terse1
+          if ! agvtool what-marketing-version -terse1 | grep -qx "$MARKETING_VERSION"; then
+            echo "FATAL: marketing version is not $MARKETING_VERSION."
+            echo "The build would be refused by that App Store version."
+            exit 1
+          fi
 
       - name: Set up code signing
         script: |

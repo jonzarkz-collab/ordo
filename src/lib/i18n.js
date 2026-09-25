@@ -81,6 +81,9 @@ export const UI = {
     // rankings rather than sitting only on the home screen.
     disclaimerShort:
       "General wellness information — not medical advice. Estimates based on typical recipes.",
+    // 1.0.2 — price + best value
+    bestValue: "Best value",
+    bestValueSub: "The lowest-priced meal rated Good or better",
   },
   ru: {
     tagline: "Знай, что заказать.",
@@ -150,6 +153,8 @@ export const UI = {
     noSubscription: "Без подписки. Без пробного периода. Ничего не продлевается.",
     disclaimerShort:
       "Общая информация о питании — не медицинский совет. Оценки основаны на типичных рецептах.",
+    bestValue: "Лучшая цена",
+    bestValueSub: "Самое недорогое основное блюдо с оценкой «Хорошо» и выше",
   },
 };
 

@@ -69,6 +69,15 @@ export const TagIcon = (p) => (
   </I>
 );
 
+// Currency-neutral on purpose: menus arrive in $, ₽, сомонӣ, €, đ…
+export const BanknoteIcon = (p) => (
+  <I {...p}>
+    <rect x="2.5" y="6" width="19" height="12" rx="2" />
+    <circle cx="12" cy="12" r="2.6" />
+    <path d="M6 9.5v5M18 9.5v5" />
+  </I>
+);
+
 export const CheckIcon = (p) => (
   <I {...p}>
     <path d="m4.5 12.5 5 5 10-11" />

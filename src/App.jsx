@@ -16,6 +16,7 @@ import {
   localizedTier,
   processingLabel,
   scriptLines,
+  bestValue,
   LOCALES,
 } from "./lib/engine.js";
 import { UI, getLang, saveLang } from "./lib/i18n.js";
@@ -46,6 +47,7 @@ import {
   ReceiptIcon,
   BoltIcon,
   ChevronIcon,
+  BanknoteIcon,
   Medal,
   TierDot,
 } from "./lib/icons.jsx";
@@ -505,6 +507,9 @@ function Results({ result, onBack, onOpen, t, lang }) {
   const podium = result.dishes.slice(0, 3);
   const rest = result.dishes.slice(3);
   const weakMenu = result.dishes.length > 0 && result.dishes[0].score < 65;
+  // On the podium it becomes a badge on that card; further down the list it
+  // gets its own card, so a budget diner never has to open "show all".
+  const value = bestValue(result.dishes);
 
   return (
     <div className="screen results">
@@ -537,11 +542,29 @@ function Results({ result, onBack, onOpen, t, lang }) {
             <span className="dish-info">
               <span className="dish-name">{d.name}</span>
               <span className="dish-reason">{d.reason}</span>
+              {value && value.rank === d.rank && <ValueBadge t={t} />}
             </span>
             <TierCol dish={d} lang={lang} />
           </button>
         ))}
       </div>
+
+      {value && value.rank > 3 && (
+        <section className="best-value">
+          <h3>
+            <BanknoteIcon size={16} /> {t.bestValue}
+          </h3>
+          <p className="best-value-sub">{t.bestValueSub}</p>
+          <button className="dish-card value-card" onClick={() => onOpen(value)}>
+            <span className="rank">{value.rank}</span>
+            <span className="dish-info">
+              <span className="dish-name">{value.name}</span>
+              <span className="dish-reason">{value.reason}</span>
+            </span>
+            <TierCol dish={value} lang={lang} />
+          </button>
+        </section>
+      )}
 
       {rest.length > 0 && (
         <>
@@ -578,6 +601,16 @@ function TierCol({ dish, lang }) {
   return (
     <span className="tier-col">
       <TierChip tier={localizedTier(dish.tier, lang)} />
+      {dish.price && <span className="dish-price">{dish.price}</span>}
+    </span>
+  );
+}
+
+function ValueBadge({ t }) {
+  return (
+    <span className="value-badge">
+      <BanknoteIcon size={13} />
+      {t.bestValue}
     </span>
   );
 }
@@ -616,6 +649,9 @@ function Detail({ dish, allDishes, onSwap, onBack, onOrdered, t, lang }) {
           return (sameSection.length ? sameSection : cands).slice(0, 2);
         })()
       : [];
+
+  const value = bestValue(allDishes);
+  const isValue = !!value && value.name === dish.name;
 
   const curTier = localizedTier(dish.tier, lang);
   const predictedScore =
@@ -664,8 +700,19 @@ function Detail({ dish, allDishes, onSwap, onBack, onOrdered, t, lang }) {
           {t.confidence}: {t.confidenceVals[dish.confidence] || dish.confidence}
         </span>
       </div>
+      {isValue && (
+        <div className="value-row">
+          <ValueBadge t={t} />
+        </div>
+      )}
 
       <div className="chips">
+        {dish.price && (
+          <span className="chip price-chip">
+            <BanknoteIcon size={14} />
+            {dish.price}
+          </span>
+        )}
         <span className="chip">
           <FlameIcon size={14} />
           {methodLabel(dish.cooking_method, lang)}
@@ -734,7 +781,9 @@ function Detail({ dish, allDishes, onSwap, onBack, onOrdered, t, lang }) {
                 <span className="dish-name">{d.name}</span>
                 <span className="dish-reason">{d.reason}</span>
               </span>
-              <TierChip tier={localizedTier(d.tier, lang)} />
+              {/* TierCol, not a bare chip: the swap's price decides it for a
+                  diner on a budget as often as its tier does. */}
+              <TierCol dish={d} lang={lang} />
             </button>
           ))}
         </section>
