@@ -469,6 +469,10 @@ section h3 { font-size: 15px; margin-bottom: 8px; color: var(--ink); }
 .value-card { background: var(--card-hi); border: 1px solid rgba(212, 175, 55, 0.34); }
 .chip.price-chip { color: var(--ink); font-weight: 650; }
 
+/* Decorative tiles that only the glass layer (styles/glass.css) shows. Kept
+   hidden here so removing that one import restores the flat look exactly. */
+.og-emblem, .og-tile { display: none; }
+
 /* Ingredients — the 3-6 defining items the model already extracts. */
 .ingredients h3 { margin-bottom: 6px; }
 .ingredient-line { color: var(--muted); font-size: 14.5px; line-height: 1.5; }

@@ -1,0 +1,384 @@
+/* ==========================================================================
+   Ordo — Liquid Glass (1.0.2), the approved "soft v2".
+
+   Real glass in FEW places only, where it shines:
+     · the Home hero tile + the "Scan a menu" button
+     · the Top pick card on the ranking
+     · the paywall sheet (+ its tile and packs)
+     · small top controls (language switch, back buttons)
+   Everything else is clean, solid and quiet.
+
+   Glass needs light behind it: a hazy, lighter version of Ordo's teal night
+   with soft light pools (body::before, fixed) sitting behind the glass.
+
+   Imported LAST (src/main.jsx). Deleting that import restores the flat look;
+   the two decorative tiles it reveals (.og-emblem, .og-tile) are hidden by
+   styles.css without it.
+   Contrast floor: no text under 9:1 anywhere (was 3.6:1 on the disclaimer).
+   ========================================================================== */
+
+:root {
+  --bg: #16333A;
+  --ink: #F7F9F8;        /* titles              */
+  --muted: #E6EDEB;      /* secondary — was #8fa5a3 (5.8–7.1:1) */
+  --ink-3: #CBD5D2;      /* dimmest text allowed — was #5c7270 (3.6:1) */
+  --teal-text: #7FE0DA;  /* teal words — was #14a09d (5.2:1) */
+  --champagne: #F7E7BF;  /* ≥9:1 on every surface it sits on */
+
+  --lg-blur: blur(24px) saturate(150%) brightness(1.05);
+  --lg-fill: linear-gradient(160deg, rgba(255,255,255,.20) 0%, rgba(255,255,255,.09) 40%, rgba(255,255,255,.06) 70%, rgba(255,255,255,.11) 100%);
+  --lg-fill-deep: linear-gradient(160deg, rgba(255,255,255,.11) 0%, rgba(255,255,255,.06) 38%, rgba(255,255,255,.03) 68%, rgba(255,255,255,.08) 100%), rgba(10, 30, 34, .48);
+  --lg-shadow: inset 0 1px 1px rgba(255,255,255,.48), inset 0 -1px 1px rgba(255,255,255,.12),
+               inset 0 0 0 1px rgba(255,255,255,.08), inset 0 0 36px rgba(255,255,255,.06),
+               0 18px 40px -18px rgba(0,0,0,.34), 0 2px 8px rgba(0,0,0,.08);
+  --lg-rim: linear-gradient(135deg, rgba(255,255,255,.70) 0%, rgba(255,255,255,.20) 18%, rgba(255,255,255,.03) 46%,
+            rgba(255,255,255,.05) 64%, rgba(255,255,255,.30) 88%, rgba(255,255,255,.60) 100%);
+  --lg-gloss: radial-gradient(150% 70% at 25% -20%, rgba(255,255,255,.20), rgba(255,255,255,0) 55%);
+  --solid: rgba(12, 32, 37, .62);
+}
+
+/* ---- 1. the hazy teal night + light pools ------------------------------- */
+html, body {
+  background: linear-gradient(180deg, #1D3F45 0%, #16333A 45%, #122A30 100%) fixed;
+  -webkit-font-smoothing: antialiased;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  /* Wide, low ambient light only. The strong light pools live INSIDE each
+     glass piece's fill (below): a fixed pool behind the page would also sit
+     behind headings and drop white text to ~4:1. */
+  background:
+    radial-gradient(90% 50% at 10% 4%, rgba(70, 190, 184, .14), transparent 72%),
+    radial-gradient(70% 42% at 104% 46%, rgba(230, 200, 130, .10), transparent 74%),
+    radial-gradient(95% 55% at 50% 110%, rgba(60, 140, 160, .24), transparent 72%);
+}
+
+/* The light behind the glass, carried in the glass itself. A backdrop-filter
+   makes each piece its own stacking context, so a glow placed behind it with
+   z-index:-1 would paint on top of it instead. */
+:root {
+  --lg-light: radial-gradient(75% 65% at 30% 72%, rgba(110, 225, 216, .42), rgba(110, 225, 216, 0) 70%),
+              radial-gradient(65% 55% at 78% 22%, rgba(255, 222, 150, .36), rgba(255, 222, 150, 0) 70%);
+  /* on the RIGHT edge only: the medal, label and tier sit on the left */
+  --lg-light-soft: radial-gradient(55% 90% at 100% 100%, rgba(110, 225, 216, .12), rgba(110, 225, 216, 0) 70%),
+                   radial-gradient(50% 80% at 100% 0%, rgba(255, 222, 150, .09), rgba(255, 222, 150, 0) 70%);
+}
+
+/* ---- 2. liquid glass, shared ------------------------------------------- */
+.lang-toggle, .back, .og-emblem, .btn.big-scan, .og-top, .paywall-card, .og-tile, .pack,
+.order-actions .btn.primary {
+  position: relative;
+  isolation: isolate;
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
+  box-shadow: var(--lg-shadow);
+}
+/* the rim that catches light at two corners */
+.lang-toggle::before, .back::before, .og-emblem::before, .btn.big-scan::before, .og-top::before,
+.paywall-card::before, .og-tile::before, .pack::before, .order-actions .btn.primary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  z-index: 2;
+  background: var(--lg-rim);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+/* the soft gloss across the top */
+.og-emblem::after, .btn.big-scan::after, .og-top::after, .paywall-card::after, .og-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background: var(--lg-gloss);
+}
+.og-top > *, .paywall-card > *, .btn.big-scan > * { position: relative; z-index: 1; }
+
+/* ---- 3. Home ------------------------------------------------------------ */
+.lang-toggle {
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--lg-fill-deep);
+}
+.lang-toggle button {
+  min-width: 50px;
+  min-height: 36px;            /* + the ::after 6px pad = a 44px target */
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 550;
+  letter-spacing: .08em;
+}
+.lang-toggle button.on {
+  color: #173238;
+  background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(236,243,242,.90));
+  box-shadow: 0 1px 6px rgba(0,0,0,.16);
+}
+
+.home .brand { margin: 3vh 0 3.2vh; display: flex; flex-direction: column; align-items: center; }
+.og-emblem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 124px;
+  height: 124px;
+  margin-bottom: 22px;
+  border-radius: 38px;
+  background: var(--lg-fill), var(--lg-light), rgba(255,255,255,.04);
+  box-shadow: var(--lg-shadow), 0 0 70px -12px rgba(110, 225, 216, .40);
+  color: #F2D08A;
+}
+.og-emblem svg { stroke-width: 1.5; filter: drop-shadow(0 0 12px rgba(240, 205, 120, .35)); }
+.logo { font-size: 38px; font-weight: 500; letter-spacing: .34em; padding-left: .34em; color: var(--ink); }
+.logo-o {
+  background: linear-gradient(180deg, #F8E6B4, #D2A84A);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.tagline { color: var(--champagne); font-weight: 500; font-size: 19px; }
+.subtitle { color: var(--muted); }
+
+/* the main action — Apple's tinted ("prominent") glass, softly tinted */
+.btn.big-scan {
+  min-height: 60px;
+  border-radius: 24px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: #fff;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,.05) 55%, rgba(255,255,255,.08) 100%),
+    linear-gradient(180deg, rgba(28, 132, 128, .74), rgba(16, 96, 94, .82));
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,.52), inset 0 -1px 1px rgba(255,255,255,.12),
+    inset 0 0 30px rgba(170, 255, 248, .10),
+    0 18px 38px -16px rgba(20, 110, 107, .55), 0 2px 8px rgba(0,0,0,.10);
+}
+.scan-budget { color: var(--muted); text-decoration: none; font-weight: 500; }
+
+/* recent scans: ONE clean card with hairline dividers */
+.history h3 { color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .16em; }
+.history-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 12px;
+  align-items: center;
+  margin: 0;
+  border-radius: 0;
+  background: var(--solid);
+  padding: 12px 16px;
+}
+.history-list { border-radius: 20px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255,255,255,.05), 0 12px 28px -18px rgba(0,0,0,.40); }
+.history-item + .history-item { box-shadow: inset 0 1px 0 rgba(255,255,255,.06); }
+.history-title { grid-column: 1; font-weight: 600; }
+.history-sub { grid-column: 1; color: var(--teal-text); }
+.history-date { grid-column: 2; grid-row: 1 / span 2; color: var(--ink-3); }
+.hist-more { color: var(--teal-text); min-height: 44px; }
+.orders-line { color: var(--muted); }
+.orders-line svg { color: #62DDAE; }
+.disclaimer { color: var(--ink-3); font-size: 12px; line-height: 1.55; }
+
+/* ---- 4. Ranking ----------------------------------------------------------- */
+.back {
+  min-height: 44px;
+  margin-left: 0;
+  padding: 0 16px 0 10px;
+  border-radius: 999px;
+  background: var(--lg-fill-deep);
+  color: var(--ink);
+  font-weight: 550;
+}
+.back svg { color: var(--teal-text); }
+.topbar-title { color: var(--muted); font-weight: 600; }
+.instant-chip { color: var(--champagne); border-color: rgba(240,217,160,.42); background: rgba(240,217,160,.03); font-weight: 600; }
+.results-heading, .dish-title { font-weight: 600; font-size: 27px; letter-spacing: -0.01em; }
+
+/* the Top pick — the one piece of real glass on this screen */
+.og-top {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 9px;
+  padding: 18px;
+  border-radius: 28px;
+  background: var(--lg-light-soft), var(--lg-fill-deep);
+  border: 0;
+}
+.og-top-head { display: flex; align-items: center; gap: 10px; }
+.og-top-label { font-size: 12px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--champagne); }
+.og-top .dish-name { font-size: 22px; font-weight: 600; line-height: 1.2; }
+.og-top .dish-reason { font-size: 14px; }
+.og-top-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 2px; }
+.og-top .dish-price { font-size: 20px; font-weight: 600; }
+
+/* the rest of the ranking: clean and solid */
+.dish-card, .podium-card, .swap-card, .value-card {
+  background: var(--solid);
+  border: 0;
+  border-radius: 20px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.05), 0 12px 28px -18px rgba(0,0,0,.40);
+}
+.podium-card.og-top, .dish-card.og-top { background: var(--lg-light-soft), var(--lg-fill-deep); box-shadow: var(--lg-shadow); }
+.swap-card { box-shadow: inset 0 0 0 1px rgba(98,221,174,.30); }
+.value-card { box-shadow: inset 0 0 0 1px rgba(240,217,160,.34); }
+.dish-name { font-weight: 600; }
+.dish-reason, .rank { color: var(--muted); }
+.dish-price { color: var(--ink); font-weight: 600; }
+/* a dark well behind the number keeps it ≥9:1 even on the glass card */
+.medal2 { font-weight: 600; border-width: 1.5px; background: radial-gradient(circle at 35% 28%, rgba(255,255,255,.08), transparent 60%), rgba(0,0,0,.22); }
+.tier-chip { border-width: 1px; font-weight: 600; background: transparent; }
+.tier-dot { box-shadow: 0 0 5px currentColor; }
+.value-badge { color: var(--champagne); border-color: rgba(240,217,160,.42); background: rgba(240,217,160,.03); font-weight: 600; }
+.best-value h3 { color: var(--champagne); font-weight: 600; }
+.best-value-sub { color: var(--muted); }
+.weak-banner { color: #F5D27A; }
+
+/* "Show all" — a quiet text button, not a box */
+.btn.ghost.og-more {
+  border: 0;
+  background: none;
+  color: var(--teal-text);
+  font-weight: 600;
+  min-height: 48px;
+  gap: 6px;
+}
+.og-more svg { transition: transform .2s ease; }
+.og-more svg.og-flip { transform: rotate(180deg); }
+.hint { color: var(--muted); }
+
+/* ---- 5. Dish detail ------------------------------------------------------- */
+.confidence { color: var(--muted); }
+.chip { background: rgba(255,255,255,.045); color: var(--ink); font-weight: 500; }
+.chip.price-chip { color: var(--ink); font-weight: 600; }
+.detail section:not(.improve):not(.swap):not(.best-value) > h3 {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ingredient-line { color: var(--muted); }
+.fact-list.good li { color: #BDF0D8; }
+.fact-list.good li svg { color: #62DDAE; }
+.fact-list.bad li { color: #FFCBBD; }
+.fact-list.bad li svg { color: #FF9A80; }
+.swap h3 { color: #62DDAE; }
+.improve { background: var(--solid); border: 0; border-radius: 20px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); }
+.improve h3, .improve h3 svg { color: var(--champagne); font-weight: 600; }
+.improve-sub { color: var(--muted); }
+.mod { background: rgba(255,255,255,.04); border-radius: 14px; }
+.mod.on { border-color: transparent; background: rgba(111,220,214,.10); box-shadow: inset 0 0 0 1.5px rgba(111,220,214,.70); }
+.predict { border-top-color: rgba(255,255,255,.08); }
+.predict .arrow, .predict.improved .arrow, .celebrate, .potential-note { color: var(--champagne); }
+.predict.potential { border-color: rgba(255,255,255,.14); }
+
+/* primary on the dish screen = the same tinted glass as "Scan a menu" */
+.order-actions .btn.primary {
+  min-height: 58px;
+  border-radius: 22px;
+  font-weight: 600;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,.05) 55%, rgba(255,255,255,.08) 100%),
+    linear-gradient(180deg, rgba(28, 132, 128, .74), rgba(16, 96, 94, .82));
+}
+.order-actions .btn.secondary { background: rgba(255,255,255,.08); color: var(--ink); border-radius: 22px; min-height: 54px; }
+.order-actions .btn.done { color: #62DDAE; background: rgba(98,221,174,.10); border-color: rgba(98,221,174,.40); }
+
+/* ---- 6. Overlays: waiter card + paywall -------------------------------- */
+.script-overlay {
+  background: rgba(14, 34, 38, .34);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+}
+/* the waiter card is CONTENT — pearl white and solid, readable across a table */
+.script-card {
+  background: linear-gradient(180deg, #FFFFFF 0%, #FBF7EE 100%);
+  border-radius: 28px;
+  box-shadow: 0 24px 60px -20px rgba(0,0,0,.40), inset 0 0 0 1px rgba(255,255,255,.9);
+}
+.script-brand { font-weight: 600; letter-spacing: .22em; }
+.script-brand span { color: #6F5313; }   /* was #b8912e, 2.9:1 on pearl */
+.script-opener, .script-hint { color: #3E4944; }
+.script-actions .btn.primary {
+  background: linear-gradient(180deg, #1B6F6B, #11504D);
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 10px 22px -12px rgba(17,80,77,.45);
+  border-radius: 18px;
+}
+.btn.ghost-dark { color: #33423D; border: 0; }
+
+/* the paywall: a glass sheet */
+.paywall-card {
+  border: 0;
+  border-radius: 34px;
+  padding: 26px 22px 16px;
+  background: var(--lg-fill-deep);   /* the tile above carries the light */
+}
+.og-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 84px;
+  height: 84px;
+  margin: 0 auto 18px;
+  border-radius: 26px;
+  background: var(--lg-fill), var(--lg-light), rgba(255,255,255,.04);
+  box-shadow: var(--lg-shadow), 0 0 50px -12px rgba(110, 225, 216, .40);
+  color: #F2D08A;
+}
+.og-tile svg { stroke-width: 1.5; filter: drop-shadow(0 0 12px rgba(240, 205, 120, .35)); }
+.paywall-title { text-align: center; font-weight: 600; font-size: 23px; }
+.paywall-sub { text-align: center; color: var(--muted); }
+.pack {
+  min-height: 58px;
+  border: 0;
+  border-radius: 18px;
+  background: linear-gradient(160deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+  color: var(--ink);
+  font-weight: 550;
+}
+.pack-price { color: var(--champagne); font-weight: 600; }
+.pack-note { color: var(--muted); }
+.pack-note.strong { color: var(--teal-text); }
+.paywall-empty { color: var(--muted); }
+.paywall-note { color: var(--champagne); }
+.paywall-actions .btn.ghost { border: 0; background: none; color: var(--ink); font-weight: 550; min-height: 48px; }
+.paywall-legal, .paywall-legal a { color: var(--ink-3); }
+
+/* ---- 7. Processing ------------------------------------------------------ */
+.processing-hint { color: var(--muted); }
+.ring { border-color: rgba(255,255,255,.10); border-top-color: #F2D08A; border-right-color: #7FE0DA; }
+
+/* ---- 8. Reduced transparency: solid surfaces, no blur, no light pools ---- */
+@media (prefers-reduced-transparency: reduce) {
+  body::before { display: none; }
+  .og-emblem::after, .btn.big-scan::after, .og-top::after, .paywall-card::after, .og-tile::after { display: none; }
+  .lang-toggle, .back, .og-emblem, .og-top, .dish-card.og-top, .paywall-card, .og-tile, .pack {
+    background: #1A3A40;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .btn.big-scan, .order-actions .btn.primary {
+    background: #16706E;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .script-overlay { background: rgba(14, 34, 38, .92); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .og-more svg { transition: none; }
+}

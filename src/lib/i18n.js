@@ -84,6 +84,7 @@ export const UI = {
     // 1.0.2 — price + best value
     bestValue: "Best value",
     bestValueSub: "The lowest-priced meal rated Good or better",
+    topPick: "Top pick",
   },
   ru: {
     tagline: "Знай, что заказать.",
@@ -155,6 +156,7 @@ export const UI = {
       "Общая информация о питании — не медицинский совет. Оценки основаны на типичных рецептах.",
     bestValue: "Лучшая цена",
     bestValueSub: "Самое недорогое основное блюдо с оценкой «Хорошо» и выше",
+    topPick: "Выбор №1",
   },
 };
 

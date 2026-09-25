@@ -47,6 +47,8 @@ import {
   ReceiptIcon,
   BoltIcon,
   ChevronIcon,
+  ChevronDownIcon,
+  EmblemIcon,
   BanknoteIcon,
   Medal,
   TierDot,
@@ -303,6 +305,10 @@ function Home({
         </div>
       </div>
       <header className="brand">
+        {/* The glass hero tile. Decorative; the logo below stays the brand. */}
+        <div className="og-emblem" aria-hidden="true">
+          <EmblemIcon size={58} />
+        </div>
         {/* Seven taps on the logo wipes the local counters and reloads.
             It lives HERE, not on the scan counter: that button opens the
             paywall on the first tap, and the overlay then covers it, so taps
@@ -340,13 +346,15 @@ function Home({
       {history.length > 0 && (
         <div className="history">
           <h3>{t.recent}</h3>
-          {(allHist ? history : history.slice(0, 3)).map((h) => (
-            <button key={h.ts} className="history-item" onClick={() => onHistory(h)}>
-              <span className="history-title">{h.title}</span>
-              <span className="history-sub">{h.top}</span>
-              <span className="history-date">{new Date(h.ts).toLocaleDateString()}</span>
-            </button>
-          ))}
+          <div className="history-list">
+            {(allHist ? history : history.slice(0, 3)).map((h) => (
+              <button key={h.ts} className="history-item" onClick={() => onHistory(h)}>
+                <span className="history-title">{h.title}</span>
+                <span className="history-sub">{h.top}</span>
+                <span className="history-date">{new Date(h.ts).toLocaleDateString()}</span>
+              </button>
+            ))}
+          </div>
           {history.length > 3 && (
             <button className="hist-more" onClick={() => setAllHist(!allHist)}>
               {allHist ? t.hide : t.allScans(history.length)}
@@ -429,6 +437,9 @@ function Paywall({ packs, budget, onBuy, onClose, t }) {
   return (
     <div className="script-overlay" onClick={onClose}>
       <div className="paywall-card" onClick={(e) => e.stopPropagation()}>
+        <div className="og-tile" aria-hidden="true">
+          <CameraIcon size={36} />
+        </div>
         <h2 className="paywall-title" onClick={tapTitle}>{t.outTitle}</h2>
         <p className="paywall-sub">{t.outSub(FREE_SCANS)}</p>
 
@@ -536,7 +547,23 @@ function Results({ result, onBack, onOpen, t, lang }) {
       )}
 
       <div className="podium">
-        {podium.map((d) => (
+        {podium.map((d) =>
+          d.rank === 1 ? (
+            // The winner is the one piece of real glass on this screen.
+            <button key={d.rank} className="dish-card og-top" onClick={() => onOpen(d)}>
+              <span className="og-top-head">
+                <Medal rank={d.rank} />
+                <span className="og-top-label">{t.topPick}</span>
+              </span>
+              <span className="dish-name">{d.name}</span>
+              <span className="dish-reason">{d.reason}</span>
+              {value && value.rank === d.rank && <ValueBadge t={t} />}
+              <span className="og-top-foot">
+                <TierChip tier={localizedTier(d.tier, lang)} big />
+                {d.price && <span className="dish-price">{d.price}</span>}
+              </span>
+            </button>
+          ) : (
           <button key={d.rank} className="dish-card podium-card" onClick={() => onOpen(d)}>
             <Medal rank={d.rank} />
             <span className="dish-info">
@@ -546,7 +573,8 @@ function Results({ result, onBack, onOpen, t, lang }) {
             </span>
             <TierCol dish={d} lang={lang} />
           </button>
-        ))}
+          )
+        )}
       </div>
 
       {value && value.rank > 3 && (
@@ -568,8 +596,9 @@ function Results({ result, onBack, onOpen, t, lang }) {
 
       {rest.length > 0 && (
         <>
-          <button className="btn ghost small" onClick={() => setShowAll(!showAll)}>
+          <button className="btn ghost small og-more" onClick={() => setShowAll(!showAll)}>
             {showAll ? t.hide : t.showAll(result.dishes.length)}
+            <ChevronDownIcon size={16} className={showAll ? "og-flip" : ""} />
           </button>
           {showAll && (
             <div className="rest-list">
@@ -615,13 +644,25 @@ function ValueBadge({ t }) {
   );
 }
 
+// Display colours for the tiers. The engine's own colours stay untouched (they
+// travel in scan results and history); these are the brighter, softer inks the
+// glass layer needs so every chip reads at ≥9:1. Unknown keys fall back.
+const TIER_INK = {
+  excellent: "#74E6BB",
+  good: "#D6DE68",
+  fair: "#F5C451",
+  poor: "#FF9A80",
+  splurge: "#CFD8DC",
+};
+
 function TierChip({ tier, big }) {
+  const ink = TIER_INK[tier.key] || tier.color;
   return (
     <span
       className={`tier-chip ${big ? "big" : ""}`}
-      style={{ color: tier.color, borderColor: tier.color }}
+      style={{ color: ink, borderColor: ink }}
     >
-      <TierDot color={tier.color} />
+      <TierDot color={ink} />
       {tier.label}
     </span>
   );

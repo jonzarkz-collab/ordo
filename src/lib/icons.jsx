@@ -111,8 +111,24 @@ export const ChevronIcon = (p) => (
   </I>
 );
 
-// Rank medal — thin metallic ring with the rank number.
-const MEDAL_COLORS = ["#E3C55C", "#C4CDD3", "#C98F5F"];
+// The Ordo emblem for the glass hero tile: the O as a ring, a leaf inside.
+export const EmblemIcon = (p) => (
+  <I {...p}>
+    <circle cx="12" cy="12" r="8.6" />
+    <path d="M8.4 15.6c-.7-3.8 1.9-7.1 7.2-7.5.2 5.2-2.7 7.9-7.2 7.5Z" />
+    <path d="M8.4 15.6c1.3-2.3 3-3.9 5.1-5" />
+  </I>
+);
+
+export const ChevronDownIcon = (p) => (
+  <I {...p}>
+    <path d="m6 9.5 6 6 6-6" />
+  </I>
+);
+
+// Rank medal — thin metallic ring with the rank number. Bronze lifted from
+// #C98F5F so all three read at ≥9:1 on the glass layer's surfaces.
+const MEDAL_COLORS = ["#F6D88A", "#D3DBE0", "#F0C8A0"];
 export function Medal({ rank }) {
   const c = MEDAL_COLORS[rank - 1] || "#5c7270";
   return (
