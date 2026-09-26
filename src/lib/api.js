@@ -31,11 +31,28 @@ export function compressImage(file, maxDim = 1400, quality = 0.72) {
 // On the web this stays empty so the request remains same-origin as before.
 const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "");
 
+// Which social post brought this user (/go/<code> → /?src=<code>). Kept in
+// localStorage so scans days later still count toward that post.
+const SRC_KEY = "ordo_src_v1";
+try {
+  const fromUrl = new URLSearchParams(window.location.search).get("src");
+  if (fromUrl) localStorage.setItem(SRC_KEY, fromUrl.slice(0, 40));
+} catch {
+  /* private mode / no window — attribution is best-effort */
+}
+function getSrc() {
+  try {
+    return localStorage.getItem(SRC_KEY) || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function scanMenu(payload) {
   const res = await fetch(`${API_BASE}/api/scan`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, src: getSrc() }),
   });
   // The server streams NDJSON keepalive lines ("{}") while it works — this
   // keeps iOS Safari from killing long scans at ~60s. The real payload (or a

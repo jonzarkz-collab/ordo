@@ -210,8 +210,11 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "POST only" });
   }
-  const { image, text, lang } = req.body || {};
+  const { image, text, lang, src } = req.body || {};
   const outLang = lang === "ru" ? "ru" : "en";
+  // One line per scan attempt, tagged with the social post that brought the
+  // user (see api/go.js) — this is how we count activations per video.
+  console.log(JSON.stringify({ evt: "scan", src: String(src || "none").slice(0, 40), lang: outLang, kind: image ? "photo" : "text" }));
   if (!image && !text) {
     return res.status(400).json({ error: "Send a menu photo or pasted menu text." });
   }

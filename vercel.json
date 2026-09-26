@@ -1,19 +1,37 @@
 {
   "functions": {
-    "api/scan.js": { "maxDuration": 300 }
+    "api/scan.js": {
+      "maxDuration": 300
+    }
   },
   "headers": [
     {
       "source": "/",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store, must-revalidate" }
+        {
+          "key": "Cache-Control",
+          "value": "no-store, must-revalidate"
+        }
       ]
     },
     {
       "source": "/index.html",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store, must-revalidate" }
+        {
+          "key": "Cache-Control",
+          "value": "no-store, must-revalidate"
+        }
       ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/go/:code",
+      "destination": "/api/go?c=:code"
+    },
+    {
+      "source": "/go",
+      "destination": "/api/go"
     }
   ]
 }
