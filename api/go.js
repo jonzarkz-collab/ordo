@@ -26,7 +26,8 @@ export default function handler(req, res) {
 
   // Zafar's call (2026-09-26): every click goes to the App Store, Android
   // included — we measure App Store downloads only.
-  const pt = process.env.ORDO_ASC_PROVIDER_ID;
+  // Provider ID (pt) is public — it appears in every App Store campaign link.
+  const pt = process.env.ORDO_ASC_PROVIDER_ID || "129281746";
   const target = `${APP_STORE}?ct=${encodeURIComponent(code)}${pt ? `&pt=${pt}` : ""}&mt=8`;
   res.setHeader("Cache-Control", "no-store");
   res.writeHead(302, { Location: target });
