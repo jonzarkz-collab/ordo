@@ -14,12 +14,17 @@ export default function handler(req, res) {
   const ua = String(req.headers["user-agent"] || "");
   const ios = /iPhone|iPad|iPod/i.test(ua);
   const os = ios ? "ios" : /Android/i.test(ua) ? "android" : "other";
+  // Link scanners (YouTube/Google safety checks, chat previews) hit a new link
+  // within seconds of posting. Tag them so click counts reflect real people.
+  const bot = /bot|crawl|spider|preview|google|facebookexternalhit|headless|curl|python|node-fetch|axios/i.test(ua) || !/Mozilla/i.test(ua);
 
   console.log(
     JSON.stringify({
       evt: "go",
       c: code,
       os,
+      bot,
+      ua: ua.slice(0, 80),
       country: req.headers["x-vercel-ip-country"] || "",
     })
   );
