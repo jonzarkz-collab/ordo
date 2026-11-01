@@ -191,6 +191,22 @@ const DISH_SCHEMA = {
   required: ["restaurant_name", "menu_language", "dishes", "waiter_phrases"],
 };
 
+// The live 1.0.x app doesn't ask for the translator (no `tr`), and gets
+// exactly the pre-1.1 schema and prompt, so this release can't change what
+// it receives.
+function schemaFor(translator) {
+  if (translator) return DISH_SCHEMA;
+  const s = structuredClone(DISH_SCHEMA);
+  delete s.properties.menu_language;
+  delete s.properties.waiter_phrases;
+  s.required = ["restaurant_name", "dishes"];
+  const item = s.properties.dishes.items;
+  delete item.properties.original_name;
+  delete item.properties.about;
+  item.required = item.required.filter((k) => k !== "original_name" && k !== "about");
+  return s;
+}
+
 // ---- Menu Memory: cross-user result cache (Upstash Redis REST) -----------
 // Zero-dependency: plain fetch against the Upstash single-command endpoint.
 // Silently disabled until KV_REST_API_URL + KV_REST_API_TOKEN are set.
@@ -218,8 +234,8 @@ async function kvCommand(cmd) {
   }
 }
 
-const cacheKey = (input, lang) =>
-  `ordo:${ENGINE_VERSION}:${lang}:` +
+const cacheKey = (input, lang, translator) =>
+  `ordo:${ENGINE_VERSION}${translator ? ":tr" : ""}:${lang}:` +
   createHash("sha256").update(input).digest("hex");
 
 // ---- Abuse guard — in-memory per serverless instance ----------------------
@@ -271,7 +287,8 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "POST only" });
   }
-  const { image, text, lang, src } = req.body || {};
+  const { image, text, lang, src, tr } = req.body || {};
+  const translator = tr === 1;
   const outLang = lang === "ru" ? "ru" : "en";
   // One line per scan attempt, tagged with the social post that brought the
   // user (see api/go.js) — this is how we count activations per video.
@@ -283,7 +300,7 @@ export default async function handler(req, res) {
   // Menu Memory first: a remembered menu is instant, free, and does not
   // count against anyone's rate limit.
   const rawInput = image ? image.data : String(text);
-  const key = cacheKey(rawInput, outLang);
+  const key = cacheKey(rawInput, outLang, translator);
   const cached = await kvCommand(["GET", key]);
   if (cached) {
     try {
@@ -362,9 +379,9 @@ export default async function handler(req, res) {
     const stream = client.messages.stream({
       model,
       max_tokens: 16000,
-      system: SYSTEM + LANG_RULE[outLang] + TRANSLATOR_RULE,
+      system: SYSTEM + LANG_RULE[outLang] + (translator ? TRANSLATOR_RULE : ""),
       messages: [{ role: "user", content: userContent }],
-      output_config: { format: { type: "json_schema", schema: DISH_SCHEMA } },
+      output_config: { format: { type: "json_schema", schema: schemaFor(translator) } },
     });
     // Live ranking: each dish goes out as {"dish": {...}} the moment the model
     // closes it, so the app can rank on-device while the rest is still being

@@ -52,7 +52,8 @@ export async function scanMenu(payload, onDish) {
   const res = await fetch(`${API_BASE}/api/scan`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...payload, src: getSrc() }),
+    // tr: 1 asks for the menu translator fields (1.1+).
+    body: JSON.stringify({ ...payload, src: getSrc(), tr: 1 }),
   });
   // The server streams NDJSON keepalive lines ("{}") while it works — this
   // keeps iOS Safari from killing long scans at ~60s. Interleaved with them,

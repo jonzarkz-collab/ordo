@@ -7,7 +7,7 @@
 // v2.0 calibration: processed_meat is graduated (primary protein vs garnish),
 // high_sodium softened — a squeeze of salt is not a hot dog.
 
-export const ENGINE_VERSION = "2.3.0"; // 2.1: price + is_meal per dish · 2.2: contains (diet/allergy groups) · 2.3: menu translator
+export const ENGINE_VERSION = "2.2.0"; // 2.1: price + is_meal per dish · 2.2: contains (diet/allergy groups). The 1.1 translator caches under its own ":tr" key, so the live app keeps its cache.
 
 export const POSITIVE_POINTS = {
   vegetables: 12,
