@@ -971,3 +971,4 @@ body::before {
    scrolling off the edge. */
 .needs-row { flex-wrap: wrap; overflow: visible; }
 .needs-label { flex-basis: 100%; margin-bottom: 2px; }
+.tagline { text-wrap: balance; }
