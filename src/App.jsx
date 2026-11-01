@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   compressImage,
   scanMenu,
@@ -17,6 +17,7 @@ import {
   processingLabel,
   scriptLines,
   bestValue,
+  rankDishes,
   LOCALES,
 } from "./lib/engine.js";
 import { UI, getLang, saveLang } from "./lib/i18n.js";
@@ -64,6 +65,10 @@ export default function App() {
   const [orders, setOrders] = useState(getBetterOrders());
   const [lang, setLang] = useState(getLang());
   const t = UI[lang] || UI.en;
+  // Live ranking: raw dish facts as the server streams them, plus the photo
+  // being read, so the wait shows the menu and the ranking building on it.
+  const [live, setLive] = useState([]);
+  const [scanPhoto, setScanPhoto] = useState(null);
 
   // Scan budget. Only the native build meters anything — the web PWA stays
   // free and unlimited, which keeps it useful as a funnel and keeps the iOS
@@ -154,9 +159,15 @@ export default function App() {
       setPaywall(true);
       return;
     }
+    setLive([]);
+    setScanPhoto(
+      payload.image ? `data:${payload.image.media_type};base64,${payload.image.data}` : null
+    );
     setScreen("processing");
     try {
-      const data = await scanMenu({ ...payload, lang });
+      const data = await scanMenu({ ...payload, lang }, (d) =>
+        setLive((l) => [...l, d])
+      );
       // Charged only on success. A timeout or a server error must never cost
       // the diner a scan — they are standing in a restaurant waiting on us.
       if (metered) {
@@ -230,7 +241,9 @@ export default function App() {
           onPaywall={() => setPaywall(true)}
         />
       )}
-      {screen === "processing" && <Processing t={t} />}
+      {screen === "processing" && (
+        <Processing t={t} lang={lang} live={live} photo={scanPhoto} />
+      )}
       {screen === "results" && result && (
         <Results
           result={result}
@@ -580,17 +593,83 @@ function Paywall({ packs, budget, onBuy, onClose, t }) {
 
 /* ---------------- Processing ---------------- */
 
-function Processing({ t }) {
+// The 10-30 seconds a scan takes used to be a spinner. Now it is the diner's
+// own menu with Ordo's scan line passing over it, and underneath, the ranking
+// building itself: each dish lands as the model finishes it, ranked on-device
+// by the same engine, and the list reshuffles as stronger dishes turn up. The
+// wait becomes the product working in front of you.
+function Processing({ t, lang, live, photo }) {
   const [line, setLine] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setLine((l) => (l + 1) % t.processing.length), 1600);
     return () => clearInterval(id);
   }, [t]);
+  const ranked = live.length ? rankDishes(live, lang) : [];
+  const shown = ranked.slice(0, 5);
   return (
-    <div className="screen processing">
-      <div className="ring" />
-      <p className="processing-line">{t.processing[line]}</p>
-      <p className="processing-hint">{t.processingHint}</p>
+    <div className={`screen processing ${ranked.length ? "has-live" : ""}`}>
+      {photo ? (
+        <div className="scan-photo">
+          <img src={photo} alt="" />
+          <span className="scan-beam" aria-hidden="true" />
+        </div>
+      ) : (
+        <div className="ring" />
+      )}
+      <p className="processing-line" aria-live="polite">
+        {ranked.length ? t.liveFound(ranked.length) : t.processing[line]}
+      </p>
+      <p className="processing-hint">
+        {ranked.length ? t.liveHint : t.processingHint}
+      </p>
+      {shown.length > 0 && <LiveBoard dishes={shown} lang={lang} />}
+      {ranked.length > shown.length && (
+        <p className="live-more">{t.liveMore(ranked.length - shown.length)}</p>
+      )}
+    </div>
+  );
+}
+
+const liveKey = (d) => `${d.name}|${d.section}|${d.price}`;
+
+// FLIP: measure where each row was, let React move it, then animate from the
+// old spot to the new one, so a dish visibly climbs when it overtakes another.
+function LiveBoard({ dishes, lang }) {
+  const rows = useRef(new Map());
+  const tops = useRef(new Map());
+  useLayoutEffect(() => {
+    const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const next = new Map();
+    rows.current.forEach((el, key) => {
+      if (!el) return;
+      const top = el.getBoundingClientRect().top;
+      next.set(key, top);
+      const was = tops.current.get(key);
+      if (!still && was != null && Math.abs(was - top) > 1) {
+        el.animate(
+          [{ transform: `translateY(${was - top}px)` }, { transform: "none" }],
+          { duration: 450, easing: "cubic-bezier(.2, .8, .2, 1)" }
+        );
+      }
+    });
+    tops.current = next;
+  });
+  return (
+    <div className="live-board">
+      {dishes.map((d) => {
+        const key = liveKey(d);
+        return (
+          <div
+            key={key}
+            ref={(el) => (el ? rows.current.set(key, el) : rows.current.delete(key))}
+            className={`live-row ${d.rank === 1 ? "leader" : ""}`}
+          >
+            <Medal rank={d.rank} />
+            <span className="live-name">{d.name}</span>
+            <TierChip tier={localizedTier(d.tier, lang)} />
+          </div>
+        );
+      })}
     </div>
   );
 }

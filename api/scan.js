@@ -8,6 +8,7 @@
 import { createHash } from "crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { rankDishes, ENGINE_VERSION } from "../src/lib/engine.js";
+import { dishScanner } from "../src/lib/dishStream.js";
 
 const SYSTEM = `You are a culinary nutrition analyst. You read restaurant menus and infer each dish's most LIKELY real-world composition as served in a typical restaurant.
 
@@ -298,13 +299,29 @@ export default async function handler(req, res) {
 
     const client = new Anthropic();
     const model = process.env.ORDO_MODEL || "claude-opus-4-8";
-    const msg = await client.messages.create({
+    const stream = client.messages.stream({
       model,
       max_tokens: 16000,
       system: SYSTEM + LANG_RULE[outLang],
       messages: [{ role: "user", content: userContent }],
       output_config: { format: { type: "json_schema", schema: DISH_SCHEMA } },
     });
+    // Live ranking: each dish goes out as {"dish": {...}} the moment the model
+    // closes it, so the app can rank on-device while the rest is still being
+    // read. Purely additive: older clients only read the LAST line, which is
+    // still the full payload below, and these lines also keep the connection
+    // warm in between keepalives.
+    const feed = dishScanner();
+    stream.on("text", (delta) => {
+      for (const dish of feed(delta)) {
+        try {
+          res.write(JSON.stringify({ dish }) + "\n");
+        } catch {
+          /* connection already gone */
+        }
+      }
+    });
+    const msg = await stream.finalMessage();
 
     if (msg.stop_reason === "refusal") {
       return finish({ error: "The analyzer declined this image. Try a clearer menu photo." });

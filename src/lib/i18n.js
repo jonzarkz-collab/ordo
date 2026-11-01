@@ -92,6 +92,10 @@ export const UI = {
     sampleBadge: "Sample menu",
     sampleBanner: "That's a sample. Your own menu works the same way.",
     scanYours: "Scan your menu",
+    // Live ranking (processing screen)
+    liveFound: (n) => (n === 1 ? "1 dish ranked so far…" : `${n} dishes ranked so far…`),
+    liveHint: "Best first. It updates as Ordo reads.",
+    liveMore: (n) => `+${n} more`,
   },
   ru: {
     tagline: "Знай, что заказать.",
@@ -170,6 +174,9 @@ export const UI = {
     sampleBadge: "Пример меню",
     sampleBanner: "Это пример. С вашим меню всё работает так же.",
     scanYours: "Сканировать своё меню",
+    liveFound: (n) => `Уже в рейтинге: ${n}…`,
+    liveHint: "Лучшие сверху. Список обновляется по ходу чтения.",
+    liveMore: (n) => `и ещё ${n}`,
   },
 };
 

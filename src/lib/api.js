@@ -48,17 +48,46 @@ function getSrc() {
   }
 }
 
-export async function scanMenu(payload) {
+export async function scanMenu(payload, onDish) {
   const res = await fetch(`${API_BASE}/api/scan`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...payload, src: getSrc() }),
   });
   // The server streams NDJSON keepalive lines ("{}") while it works — this
-  // keeps iOS Safari from killing long scans at ~60s. The real payload (or a
-  // JSON error) is always the last non-empty line. Plain JSON error responses
-  // (400/429/500) parse through the same path.
-  const raw = await res.text();
+  // keeps iOS Safari from killing long scans at ~60s. Interleaved with them,
+  // {"dish": {...}} lines carry each dish as soon as the model finishes it
+  // (live ranking). The real payload (or a JSON error) is always the last
+  // non-empty line. Plain JSON error responses (400/429/500) parse through the
+  // same path.
+  let raw = "";
+  const reader = res.body?.getReader?.();
+  if (reader) {
+    const dec = new TextDecoder();
+    let pending = "";
+    const take = (s) => {
+      raw += s;
+      pending += s;
+      const lines = pending.split("\n");
+      pending = lines.pop();
+      for (const l of lines) {
+        if (!onDish || !l.startsWith('{"dish"')) continue;
+        try {
+          onDish(JSON.parse(l).dish);
+        } catch {
+          /* a partial is a bonus — the final payload is what counts */
+        }
+      }
+    };
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      take(dec.decode(value, { stream: true }));
+    }
+    take(dec.decode());
+  } else {
+    raw = await res.text();
+  }
   let data = {};
   try {
     const lines = raw.split("\n").filter((l) => l.trim());
