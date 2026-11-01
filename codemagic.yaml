@@ -27,7 +27,7 @@ workflows:
         # differs from the App Store version record it is attached to.
         # Capacitor's template hardcodes 1.0, which is why 1.0 needed no step.
         # Bump for every new App Store version.
-        MARKETING_VERSION: "1.0.2"
+        MARKETING_VERSION: "1.1.0"
         # CRITICAL. Under Capacitor the page origin is capacitor://localhost, so
         # a same-origin /api/scan resolves to the app bundle and 404s. This
         # points the native build at the deployed backend. Wrong or missing =
@@ -99,6 +99,11 @@ workflows:
           npx cap ls ios | tee capls.txt
           if ! grep -q "@revenuecat/purchases-capacitor" capls.txt; then
             echo "FATAL: RevenueCat plugin is NOT discovered by Capacitor."
+            exit 1
+          fi
+          # 1.1: Apple's rating sheet. Missing, it fails silently the same way.
+          if ! grep -q "@capacitor-community/in-app-review" capls.txt; then
+            echo "FATAL: in-app-review plugin is NOT discovered by Capacitor."
             exit 1
           fi
           echo "Discovered by Capacitor. Now: HOW is it meant to be linked?"
