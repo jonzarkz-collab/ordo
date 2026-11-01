@@ -120,6 +120,15 @@ export const EmblemIcon = (p) => (
   </I>
 );
 
+// iOS-style share: a tray with an arrow leaving it.
+export const ShareIcon = (p) => (
+  <I {...p}>
+    <path d="M12 3.5v11" />
+    <path d="m8 7.5 4-4 4 4" />
+    <path d="M8.5 10.5H7A1.5 1.5 0 0 0 5.5 12v7A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5v-7a1.5 1.5 0 0 0-1.5-1.5h-1.5" />
+  </I>
+);
+
 export const ChevronDownIcon = (p) => (
   <I {...p}>
     <path d="m6 9.5 6 6 6-6" />

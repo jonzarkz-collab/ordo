@@ -62,7 +62,9 @@ import {
   BanknoteIcon,
   Medal,
   TierDot,
+  ShareIcon,
 } from "./lib/icons.jsx";
+import { drawShareCard, shareImage, shareLink } from "./lib/shareCard.js";
 
 export default function App() {
   const [screen, setScreen] = useState("home"); // home | processing | results | detail
@@ -286,6 +288,7 @@ export default function App() {
           onSwap={openDish}
           onBack={() => setScreen("results")}
           onOrdered={onOrdered}
+          restaurant={result?.restaurant || t.thisMenu}
           demo={!!result?.demo}
           onScan={startScan}
           t={t}
@@ -703,6 +706,7 @@ function LiveBoard({ dishes, lang }) {
 function Results({ result, onBack, onOpen, onScan, needs, onNeed, t, lang }) {
   const [showAll, setShowAll] = useState(false);
   const [showMisfit, setShowMisfit] = useState(false);
+  const share = useShare(t, lang);
   // Everything below ranks what the diner can actually eat. Dishes their
   // needs rule out drop to their own list at the bottom, not out of sight.
   const { fit: dishes, misfit } = fitDishes(result.dishes, needs);
@@ -721,7 +725,24 @@ function Results({ result, onBack, onOpen, onScan, needs, onNeed, t, lang }) {
           {t.newScan}
         </button>
         <span className="topbar-title">{result.restaurant || t.thisMenu}</span>
+        {share.can && dishes.length > 0 && (
+          <button
+            className="share-btn"
+            aria-label={t.share}
+            disabled={share.busy}
+            onClick={() =>
+              share.run({
+                restaurant: result.restaurant || t.thisMenu,
+                dishes: dishes.slice(0, 3),
+                code: "ranking",
+              })
+            }
+          >
+            <ShareIcon size={19} />
+          </button>
+        )}
       </nav>
+      {share.note && <div className="share-note">{share.note}</div>}
       {result.demo && <div className="sample-chip">{t.sampleBadge}</div>}
       {result.cached && (
         <div className="instant-chip">
@@ -878,6 +899,131 @@ function NeedsBar({ needs, onNeed, t }) {
   );
 }
 
+// Share the ranking as an image + tracked install link. `can` is decided at
+// runtime: a browser always gets it (desktop falls back to save + copy link);
+// the native app only shows it where the WebView exposes a share sheet, so no
+// button ever appears that does nothing.
+function useShare(t, lang) {
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+  const can = typeof navigator !== "undefined" && (!!navigator.share || !isNative());
+
+  async function run({ restaurant, dishes, pick, code }) {
+    if (busy) return;
+    setBusy(true);
+    const view = (d) => {
+      const tier = localizedTier(d.tier, lang);
+      return { ...d, tierLabel: tier.label, ink: TIER_INK[tier.key] || tier.color };
+    };
+    try {
+      const blob = await drawShareCard({
+        restaurant,
+        dishes: dishes.map(view),
+        pick: pick ? view(pick) : null,
+        copy: {
+          kicker: t.shareKicker,
+          topPick: t.topPick,
+          myOrder: t.shareMyOrder,
+          footer: t.shareFooter,
+          footerSub: t.shareFooterSub,
+        },
+      });
+      const status = await shareImage({
+        blob,
+        title: "Ordo",
+        text: t.shareText(restaurant),
+        url: shareLink(code),
+      });
+      if (status === "saved") {
+        setNote(t.shareSaved);
+        setTimeout(() => setNote(""), 2600);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return { can, busy, note, run };
+}
+
+// The end of the core loop. "I'm ordering this" used to just relabel its own
+// button; now a good order gets its moment: the count, the tier the asks
+// earned, progress to the next milestone, and the natural next step at a
+// table: send the ranking to everyone else deciding.
+const MILESTONES = [3, 5, 10, 25, 50, 100, 250, 500];
+
+function OrderMoment({ count, dish, from, to, share, onShare, onClose, t }) {
+  const next = MILESTONES.find((m) => m > count) || count + 100;
+  const hit = MILESTONES.includes(count);
+  // The ring fills from where it was to where this order puts it.
+  const [fill, setFill] = useState((count - 1) / next);
+  useEffect(() => {
+    // A timer, not rAF: rAF is paused in a backgrounded WebView, and the ring
+    // must still land on the right value. 60ms lets the start state paint so
+    // the CSS transition has something to animate from.
+    const id = setTimeout(() => setFill(hit ? 1 : count / next), 60);
+    return () => clearTimeout(id);
+  }, [count, next, hit]);
+  const R = 56;
+  const C = 2 * Math.PI * R;
+
+  return (
+    <div className="moment-overlay" onClick={onClose}>
+      <div className="moment-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={t.counted(count)}>
+        <div className="moment-ring">
+          <svg viewBox="0 0 132 132" width="132" height="132" aria-hidden="true">
+            <defs>
+              <linearGradient id="og-ring" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="#F7E7BF" />
+                <stop offset="1" stopColor="#7FE0DA" />
+              </linearGradient>
+            </defs>
+            <circle cx="66" cy="66" r={R} className="ring-track" />
+            <circle
+              cx="66"
+              cy="66"
+              r={R}
+              className="ring-fill"
+              stroke="url(#og-ring)"
+              strokeDasharray={C}
+              strokeDashoffset={C * (1 - fill)}
+            />
+          </svg>
+          <span className="moment-num">
+            <LeafIcon size={20} />#{count}
+          </span>
+        </div>
+        <h2 className="moment-title">{t.counted(count)}</h2>
+        <p className="moment-dish">{dish.name}</p>
+        {from && to && (
+          <div className="moment-tiers">
+            <TierChip tier={from} />
+            <span className="arrow">→</span>
+            <TierChip tier={to} big />
+            <span className="moment-asks">{t.momentImproved}</span>
+          </div>
+        )}
+        <p className="moment-line">
+          {count === 1 ? t.momentFirst : hit ? t.momentMilestone(count) : t.momentNext(next - count, next)}
+        </p>
+        <p className="moment-sub">{t.momentLine}</p>
+        <div className="moment-actions">
+          {share.can && (
+            <button className="btn primary big-scan" disabled={share.busy} onClick={onShare}>
+              <ShareIcon size={20} />
+              {t.sendTable}
+            </button>
+          )}
+          {share.note && <p className="moment-note">{share.note}</p>}
+          <button className="btn ghost small moment-done" onClick={onClose}>
+            {t.done}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Pinned under the sample ranking and its dishes: the moment someone has just
 // seen what Ordo does is the moment to hand them their own menu.
 function ScanYoursBar({ t, onScan }) {
@@ -940,10 +1086,12 @@ function TierChip({ tier, big }) {
 
 /* ---------------- Detail + Improve + Waiter Script ---------------- */
 
-function Detail({ dish, allDishes, onSwap, onBack, onOrdered, demo, onScan, needs, t, lang }) {
+function Detail({ dish, allDishes, onSwap, onBack, onOrdered, restaurant, demo, onScan, needs, t, lang }) {
   const [active, setActive] = useState([]);
   const [showScript, setShowScript] = useState(false);
   const [orderedNo, setOrderedNo] = useState(null); // better-order number, or 0 = plain "enjoy"
+  const [moment, setMoment] = useState(false);
+  const share = useShare(t, lang);
 
   const clash = conflicts(dish, needs);
   const allergies = allergyGroups(needs);
@@ -1000,6 +1148,8 @@ function Detail({ dish, allDishes, onSwap, onBack, onOrdered, demo, onScan, need
       const next = recordBetterOrder(dish);
       onOrdered(next);
       setOrderedNo(next.count);
+      setShowScript(false);
+      setMoment(true);
     } else {
       setOrderedNo(0);
     }
@@ -1195,6 +1345,26 @@ function Detail({ dish, allDishes, onSwap, onBack, onOrdered, demo, onScan, need
 
       <footer className="disclaimer">{t.disclaimerShort}</footer>
       {demo && <ScanYoursBar t={t} onScan={onScan} />}
+
+      {moment && orderedNo > 0 && (
+        <OrderMoment
+          count={orderedNo}
+          dish={dish}
+          from={improved ? curTier : null}
+          to={improved ? predictedTier : null}
+          share={share}
+          onShare={() =>
+            share.run({
+              restaurant,
+              dishes: allDishes.slice(0, 3),
+              pick: improved ? { ...dish, tier: tierFor(predictedScore) } : dish,
+              code: "table",
+            })
+          }
+          onClose={() => setMoment(false)}
+          t={t}
+        />
+      )}
 
       {showScript && (
         <ScriptCard
