@@ -209,6 +209,9 @@ export async function listPacks() {
         credits: PACKS[p.product.identifier],
         priceString: p.product.priceString,
         price: p.product.price,
+        // For the per-menu line on the paywall. Optional: without it the
+        // pack just shows its total, as before.
+        currency: p.product.currencyCode,
       }))
       .sort((a, b) => a.price - b.price);
   } catch (e) {

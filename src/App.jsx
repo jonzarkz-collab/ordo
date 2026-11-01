@@ -109,8 +109,23 @@ export default function App() {
 
   const refreshBudget = (g = granted) => setBudget(entitlement(g));
 
+  // `?metered=1` in dev has no StoreKit behind it, so the paywall would only
+  // ever show "store unreachable". A fake two-pack store (the intended App
+  // Store prices) lets the real paywall be looked at and clicked through.
+  // DEV-only: stripped from every build that ships.
+  const devStore = import.meta.env.DEV && metered && !isNative();
+
   useEffect(() => {
     if (!metered) return;
+    if (devStore) {
+      ensureBaseline(0);
+      setBudget(entitlement(0));
+      setPacks([
+        { productId: "ordo_scans_25", credits: 25, price: 4.99, priceString: "$4.99", currency: "USD" },
+        { productId: "ordo_scans_50", credits: 50, price: 7.99, priceString: "$7.99", currency: "USD" },
+      ]);
+      return;
+    }
     (async () => {
       const ok = await initPurchases();
       if (!ok) return;
@@ -217,7 +232,9 @@ export default function App() {
    */
   async function onBuy(pack) {
     const before = granted;
-    const g = await buyPack(pack);
+    const g = devStore
+      ? await new Promise((r) => setTimeout(() => r(granted + pack.credits), 700))
+      : await buyPack(pack);
     if (g === null) return null; // user cancelled — not an error
     setGranted(g);
     refreshBudget(g);
@@ -299,6 +316,8 @@ export default function App() {
         <Paywall
           packs={packs}
           budget={budget}
+          history={history}
+          orders={orders}
           onBuy={onBuy}
           onClose={() => setPaywall(false)}
           t={t}
@@ -398,7 +417,9 @@ function Home({
         </button>
         {metered && (
           <button
-            className="scan-budget"
+            // The last scan gets a warmer line, so running out is never news
+            // delivered at the restaurant table.
+            className={`scan-budget ${budget.total === 1 ? "low" : ""}`}
             onClick={onPaywall}
           >
             {budget.paid > 0
@@ -512,7 +533,55 @@ const APPLE_EULA =
   "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";
 const PRIVACY_URL = "https://ordo-one-green.vercel.app/privacy.html";
 
-function Paywall({ packs, budget, onBuy, onClose, t }) {
+// The paywall leads with what the free scans already did, printed as a
+// receipt: menus ranked, dishes sorted, better orders, the #1 pick from each
+// menu, and "Cost: free". The ask comes after the proof, in the diner's own
+// restaurants, not in claims about the app. Every number is real and local;
+// nothing is counted that didn't happen.
+function scanReceipt(history, orders) {
+  const menus = history.filter((h) => h.result?.dishes?.length);
+  return {
+    menus: menus.length,
+    dishes: menus.reduce((n, h) => n + h.result.dishes.length, 0),
+    orders: orders.count || 0,
+    picks: menus.slice(0, 3).map((h) => ({
+      where: h.result.restaurant || "",
+      dish: h.result.dishes[0].name,
+    })),
+  };
+}
+
+// "$0.16 a menu", in the storefront's own currency. Formatted in the device's
+// locale, not the UI language, so it matches StoreKit's priceString beside it
+// ("$7.99" next to "$0.16", never next to "0,16 $"). Null when StoreKit didn't
+// say which currency, so the pack falls back to its plain total.
+function perMenu(pack) {
+  if (!pack.currency || !pack.price || !pack.credits) return null;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: pack.currency,
+      maximumFractionDigits: 2,
+    }).format(pack.price / pack.credits);
+  } catch {
+    return null;
+  }
+}
+
+function Paywall({ packs, budget, history, orders, onBuy, onClose, t }) {
+  const receipt = scanReceipt(history, orders);
+  // Opened from the "N free scans left" line, the sheet is a top-up, not a
+  // wall — it must not tell someone with scans left that they're out.
+  const out = budget.total <= 0;
+  // Best value = the cheapest per scan, named only when there is a choice.
+  const unit = (p) => p.price / p.credits;
+  const best =
+    packs.length > 1
+      ? packs.reduce((a, b) => (unit(b) < unit(a) ? b : a))
+      : null;
+  const dearest = packs.length > 1 ? Math.max(...packs.map(unit)) : 0;
+  const save = best ? Math.round((1 - unit(best) / dearest) * 100) : 0;
+
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   // The store diagnostic must not ship visible to App Review — a reviewer whose
@@ -559,13 +628,51 @@ function Paywall({ packs, budget, onBuy, onClose, t }) {
   }
 
   return (
-    <div className="script-overlay" onClick={onClose}>
+    <div className="script-overlay paywall-overlay" onClick={onClose}>
       <div className="paywall-card" onClick={(e) => e.stopPropagation()}>
-        <div className="og-tile" aria-hidden="true">
-          <CameraIcon size={36} />
-        </div>
-        <h2 className="paywall-title" onClick={tapTitle}>{t.outTitle}</h2>
-        <p className="paywall-sub">{t.outSub(FREE_SCANS)}</p>
+        {receipt.menus > 0 ? (
+          <div className="receipt">
+            <span className="receipt-head">{t.receiptHead}</span>
+            <span className="receipt-row">
+              <span>{t.rcMenus}</span><span className="paper-lead" /><b>{receipt.menus}</b>
+            </span>
+            <span className="receipt-row">
+              <span>{t.rcDishes}</span><span className="paper-lead" /><b>{receipt.dishes}</b>
+            </span>
+            {receipt.orders > 0 && (
+              <span className="receipt-row">
+                <span>{t.rcOrders}</span><span className="paper-lead" /><b>{receipt.orders}</b>
+              </span>
+            )}
+            <span className="receipt-sub">{t.rcPicks}</span>
+            {receipt.picks.map((p, i) => (
+              <span className="receipt-pick" key={i}>
+                <span className="paper-dot" />
+                <span className="receipt-dish">
+                  {p.dish}
+                  {p.where && <small>{p.where}</small>}
+                </span>
+              </span>
+            ))}
+            <span className="receipt-row total">
+              <span>{t.rcCost}</span><span className="paper-lead" /><b>{t.rcFree}</b>
+            </span>
+          </div>
+        ) : (
+          <div className="og-tile" aria-hidden="true">
+            <CameraIcon size={36} />
+          </div>
+        )}
+        <h2 className="paywall-title" onClick={tapTitle}>
+          {out
+            ? t.keepTitle
+            : budget.paid > 0
+              ? t.scansLeft(budget.total)
+              : t.freeLeft(budget.free)}
+        </h2>
+        <p className="paywall-sub">
+          {out ? (receipt.menus > 0 ? t.keepSub : t.outSub(FREE_SCANS)) : t.leftSub}
+        </p>
 
         {packs.length === 0 ? (
           <>
@@ -578,18 +685,26 @@ function Paywall({ packs, budget, onBuy, onClose, t }) {
           </>
         ) : (
           <div className="pack-list">
-            {packs.map((p) => (
-              <button
-                key={p.productId}
-                className="pack"
-                disabled={busy}
-                onClick={() => buy(p)}
-              >
-                <span className="pack-credits">{t.packCredits(p.credits)}</span>
-                {/* StoreKit's own localised string — never a hardcoded price. */}
-                <span className="pack-price">{p.priceString}</span>
-              </button>
-            ))}
+            {packs.map((p) => {
+              const each = perMenu(p);
+              const isBest = p === best && save > 0;
+              return (
+                <button
+                  key={p.productId}
+                  className={`pack ${isBest ? "best" : ""}`}
+                  disabled={busy}
+                  onClick={() => buy(p)}
+                >
+                  {isBest && <span className="pack-badge">{t.bestDeal(save)}</span>}
+                  <span className="pack-main">
+                    <span className="pack-credits">{t.packCredits(p.credits)}</span>
+                    {each && <span className="pack-each">{t.perMenu(each)}</span>}
+                  </span>
+                  {/* StoreKit's own localised string — never a hardcoded price. */}
+                  <span className="pack-price">{p.priceString}</span>
+                </button>
+              );
+            })}
           </div>
         )}
 

@@ -810,3 +810,123 @@ body::before {
   .moment-overlay { background: rgba(10, 26, 30, .92); -webkit-backdrop-filter: none; backdrop-filter: none; }
   .moment-sheet, .share-btn { background: #1A3A40; }
 }
+
+/* ---- 13. The paywall leads with a receipt --------------------------------
+   Same cream paper as the sample menu: the one warm object, and CONTENT, so
+   it reads as a printed slip of what the free scans did. A torn edge at the
+   bottom, tabular numbers, and "Cost: free" as the total line. The packs
+   below then say what a menu costs from here. */
+.receipt {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: min(300px, 100%);
+  margin: -2px auto 20px;
+  padding: 16px 18px 22px;
+  border-radius: 14px 14px 0 0;
+  color: #22302E;
+  background: linear-gradient(180deg, #FFFDF8 0%, #F6EFDF 100%);
+  box-shadow: 0 24px 40px -24px rgba(0, 0, 0, .55), inset 0 0 0 1px rgba(255, 255, 255, .7);
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  transform: rotate(-1.2deg);
+  animation: og-print .55s cubic-bezier(.2, .8, .2, 1) both;
+  /* torn bottom edge: 10px teeth cut out of the paper itself */
+  -webkit-mask: linear-gradient(#000 0 0) top / 100% calc(100% - 8px) no-repeat,
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 12px 8px repeat-x;
+  mask: linear-gradient(#000 0 0) top / 100% calc(100% - 8px) no-repeat,
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 12px 8px repeat-x;
+}
+.receipt-head {
+  margin-bottom: 8px;
+  padding-bottom: 9px;
+  text-align: center;
+  font-family: -apple-system, system-ui, sans-serif;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: #5F5848;
+  border-bottom: 1px dashed rgba(34, 48, 46, .28);
+}
+.receipt-row {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+.receipt-row b { font-weight: 650; font-variant-numeric: tabular-nums; }
+.receipt-row.total {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(34, 48, 46, .28);
+  font-size: 15.5px;
+}
+.receipt-row.total b { color: #0F7A55; }
+.receipt-sub {
+  margin: 8px 0 3px;
+  font-family: -apple-system, system-ui, sans-serif;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #6B6452;
+}
+.receipt-pick { display: flex; align-items: flex-start; gap: 8px; padding: 2px 0; font-size: 14px; line-height: 1.3; }
+.receipt-pick .paper-dot {
+  align-self: flex-start;
+  margin-top: 4px;
+  background: #16A36B;
+  box-shadow: 0 0 0 3px rgba(22, 163, 107, .18);
+}
+.receipt-dish { min-width: 0; font-weight: 600; }
+.receipt-dish small {
+  display: block;
+  font-weight: 400;
+  font-size: 12px;
+  color: #5F5848;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* With the receipt the sheet can outgrow a small phone. A centred flex child
+   that overflows spills off the top where it can't be scrolled to, so the
+   sheet centres with auto margins instead, which fall back to top-aligned. */
+.paywall-overlay { align-items: flex-start; }
+.paywall-overlay .paywall-card { margin: auto 0; }
+
+/* packs: the per-menu price under each total, the best one ringed in gold */
+.pack { position: relative; text-align: left; }
+.pack-main { display: flex; flex-direction: column; gap: 2px; }
+.pack-each { font-size: 13px; font-weight: 500; color: var(--muted); }
+.pack.best {
+  margin-top: 10px;
+  background: linear-gradient(160deg, rgba(242, 208, 138, .16), rgba(255, 255, 255, .04));
+  box-shadow: inset 0 0 0 1.5px rgba(242, 208, 138, .62), 0 10px 30px -14px rgba(242, 208, 138, .45);
+}
+.pack-badge {
+  position: absolute;
+  top: -10px;
+  left: 16px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: .02em;
+  color: #2A1F06;
+  background: #F2D08A;
+}
+
+/* home: the last scan is said a little louder */
+.scan-budget.low { color: var(--champagne); text-decoration-color: rgba(242, 208, 138, .5); }
+
+@media (prefers-reduced-motion: reduce) {
+  .receipt { animation: none; }
+}
+/* the slip feeds out of the top of the sheet, like a till printing it */
+@keyframes og-print {
+  from { opacity: 0; transform: translateY(-14px) rotate(-1.2deg); clip-path: inset(0 0 100% 0); }
+  to { opacity: 1; transform: rotate(-1.2deg); clip-path: inset(0 0 -20px 0); }
+}
