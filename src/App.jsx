@@ -14,7 +14,6 @@ import {
   tierFor,
   applyMods,
   localizedTier,
-  processingLabel,
   scriptLines,
   bestValue,
   rankDishes,
@@ -51,8 +50,6 @@ import {
   SparkIcon,
   LeafIcon,
   FlameIcon,
-  LayersIcon,
-  TagIcon,
   CheckIcon,
   AlertIcon,
   ReceiptIcon,
@@ -69,6 +66,7 @@ import {
 import { drawShareCard, shareImage, shareLink } from "./lib/shareCard.js";
 // Apple's own rating sheet (SKStoreReviewController). A no-op proxy on the web.
 import { InAppReview } from "@capacitor-community/in-app-review";
+import { tap, success } from "./lib/haptics.js";
 
 const REVIEW_KEY = "ordo_review_asked_v1";
 
@@ -220,6 +218,7 @@ export default function App() {
       saveToHistory(data, hash);
       setHistory(loadHistory());
       setScreen("results");
+      success();
     } catch (e) {
       const timedOut = e.status === 504 || e.status === 502 || e.status === 524;
       setError(timedOut ? t.timeoutError : e.message);
@@ -678,11 +677,7 @@ function Paywall({ packs, budget, history, orders, onBuy, onClose, t }) {
               <span>{t.rcCost}</span><span className="paper-lead" /><b>{t.rcFree}</b>
             </span>
           </div>
-        ) : (
-          <div className="og-tile" aria-hidden="true">
-            <CameraIcon size={36} />
-          </div>
-        )}
+        ) : null}
         <h2 className="paywall-title" onClick={tapTitle}>
           {out
             ? t.keepTitle
@@ -728,7 +723,6 @@ function Paywall({ packs, budget, history, orders, onBuy, onClose, t }) {
           </div>
         )}
 
-        <p className="pack-note">{t.packNote}</p>
         <p className="pack-note strong">{t.noSubscription}</p>
 
         {note && <p className="paywall-note">{note}</p>}
@@ -1299,11 +1293,13 @@ function Detail({ dish, allDishes, onSwap, onBack, onOrdered, restaurant, demo, 
   const showPotential = active.length === 0 && bestTier.key !== dish.tier.key;
 
   function toggle(id) {
+    tap();
     setActive((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
   }
 
   function orderIt() {
     if (orderedNo !== null) return;
+    success();
     // A "better order" = a genuinely strong pick, or any dish improved by asks.
     const qualifies = active.length > 0 || dish.score >= 65;
     // Nobody ate the sample, so it must not inflate the Better Orders count.
@@ -1332,9 +1328,9 @@ function Detail({ dish, allDishes, onSwap, onBack, onOrdered, restaurant, demo, 
       {dish.about && <p className="dish-about big">{dish.about}</p>}
       <div className="tier-row">
         <TierChip tier={curTier} big />
-        <span className="confidence">
-          {t.confidence}: {t.confidenceVals[dish.confidence] || dish.confidence}
-        </span>
+        {dish.confidence && dish.confidence !== "high" && (
+          <span className="confidence">{t.roughEstimate}</span>
+        )}
       </div>
       {isValue && (
         <div className="value-row">
@@ -1366,16 +1362,6 @@ function Detail({ dish, allDishes, onSwap, onBack, onOrdered, restaurant, demo, 
           <FlameIcon size={14} />
           {methodLabel(dish.cooking_method, lang)}
         </span>
-        <span className="chip">
-          <LayersIcon size={14} />
-          {processingLabel(dish.nova, lang)}
-        </span>
-        {dish.section && (
-          <span className="chip">
-            <TagIcon size={14} />
-            {dish.section}
-          </span>
-        )}
       </div>
 
       {/* The model already extracts the 3-6 defining ingredients on every scan
@@ -1509,7 +1495,6 @@ function Detail({ dish, allDishes, onSwap, onBack, onOrdered, restaurant, demo, 
       </div>
 
       <footer className="disclaimer">{t.disclaimerShort}</footer>
-      {demo && <ScanYoursBar t={t} onScan={onScan} />}
 
       {moment && orderedNo > 0 && (
         <OrderMoment

@@ -10,14 +10,14 @@ function andList(items, word) {
 
 export const UI = {
   en: {
-    tagline: "Know what to order.",
+    tagline: "Any menu, any language. Know what to order.",
     subtitle:
       "Scan any menu, in any language. The best dishes first, translated, in seconds.",
     scan: "Scan a menu",
     recent: "Recent",
     allScans: (n) => `All scans (${n})`,
     disclaimer:
-      "Ordo gives general wellness information to help you choose. It is not medical advice and does not diagnose, treat, or prevent any disease. Rankings are estimates based on typical recipes — actual dishes vary.",
+      "General wellness information, not medical advice. Rankings are estimates based on typical recipes; actual dishes vary.",
     processing: [
       "Reading the menu…",
       "Identifying every dish…",
@@ -35,8 +35,7 @@ export const UI = {
     hide: "Hide",
     tapHint: "Tap any dish to see why — and how to order it better.",
     backResults: "Results",
-    confidence: "confidence",
-    confidenceVals: { high: "high", medium: "medium", low: "low" },
+    roughEstimate: "Rough estimate: check with the waiter",
     whatsInIt: "What's in it",
     goingForIt: "Going for it",
     worthKnowing: "Worth knowing",
@@ -94,7 +93,7 @@ export const UI = {
     terms: "Terms of Use",
     privacy: "Privacy Policy",
     purchaseFailed: "That purchase didn't go through. You haven't been charged.",
-    noSubscription: "No subscription. No free trial. Nothing auto-renews.",
+    noSubscription: "One-time purchase. Never expires. Nothing renews.",
     // Shown on every screen that states a verdict. The store name says
     // "Longevity", so the not-medical-advice line has to travel with the
     // rankings rather than sitting only on the home screen.
@@ -105,8 +104,8 @@ export const UI = {
     bestValueSub: "The lowest-priced meal rated Good or better",
     topPick: "Top pick",
     // First-run sample menu
-    sampleKind: "Mediterranean grill",
-    sampleTry: "No menu nearby? Tap to try this one",
+    sampleKind: "Turkish · fish & grill",
+    sampleTry: "Try a Turkish menu, see it translated",
     sampleReading: "Ranking it…",
     sampleBadge: "Sample menu",
     sampleBanner: "That's a sample. Your own menu works the same way.",
@@ -181,14 +180,14 @@ export const UI = {
     momentLine: "Small swaps, made often, are what add up.",
   },
   ru: {
-    tagline: "Знай, что заказать.",
+    tagline: "Любое меню, любой язык. Знай, что заказать.",
     subtitle:
       "Сканируй любое меню на любом языке — лучшие блюда сверху, с переводом, за секунды.",
     scan: "Сканировать меню",
     recent: "Недавние",
     allScans: (n) => `Все сканы (${n})`,
     disclaimer:
-      "Ordo даёт общую информацию о питании и помогает с выбором. Это не медицинский совет: сервис не диагностирует, не лечит и не предотвращает заболевания. Оценки основаны на типичных рецептах — реальные блюда могут отличаться.",
+      "Общая информация о питании, не медицинский совет. Оценки основаны на типичных рецептах; реальные блюда могут отличаться.",
     processing: [
       "Читаю меню…",
       "Определяю каждое блюдо…",
@@ -206,8 +205,7 @@ export const UI = {
     hide: "Скрыть",
     tapHint: "Нажмите на блюдо — почему такой рейтинг и как заказать лучше.",
     backResults: "Результаты",
-    confidence: "уверенность",
-    confidenceVals: { high: "высокая", medium: "средняя", low: "низкая" },
+    roughEstimate: "Примерная оценка: уточните у официанта",
     whatsInIt: "Что внутри",
     goingForIt: "В плюс",
     worthKnowing: "Стоит знать",
@@ -257,14 +255,14 @@ export const UI = {
     terms: "Условия использования",
     privacy: "Политика конфиденциальности",
     purchaseFailed: "Покупка не прошла. Деньги не списаны.",
-    noSubscription: "Без подписки. Без пробного периода. Ничего не продлевается.",
+    noSubscription: "Разовая покупка. Не сгорает. Ничего не продлевается.",
     disclaimerShort:
       "Общая информация о питании — не медицинский совет. Оценки основаны на типичных рецептах.",
     bestValue: "Лучшая цена",
     bestValueSub: "Самое недорогое основное блюдо с оценкой «Хорошо» и выше",
     topPick: "Выбор №1",
-    sampleKind: "Средиземноморский гриль",
-    sampleTry: "Меню нет под рукой? Попробуйте на этом",
+    sampleKind: "Турецкая кухня · рыба и гриль",
+    sampleTry: "Попробуйте турецкое меню с переводом",
     sampleReading: "Составляю рейтинг…",
     sampleBadge: "Пример меню",
     sampleBanner: "Это пример. С вашим меню всё работает так же.",

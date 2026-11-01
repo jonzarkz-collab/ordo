@@ -965,3 +965,9 @@ body::before {
 .script-trans { color: #3E4944; font-size: 15px; margin-bottom: 14px; }
 .script-lines.local li { display: flex; flex-direction: column; gap: 3px; }
 .script-lines.local li small { font-size: 13px; font-weight: 450; color: #55625F; }
+
+/* ---- 2.0 polish ---------------------------------------------------------- */
+/* All six needs visible: label on its own line, chips wrap instead of
+   scrolling off the edge. */
+.needs-row { flex-wrap: wrap; overflow: visible; }
+.needs-label { flex-basis: 100%; margin-bottom: 2px; }

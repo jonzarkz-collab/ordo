@@ -1,11 +1,14 @@
-// Demo menu — "Olive & Ember", a Mediterranean grill. Runs entirely on-device
-// through the same deterministic engine, so it works with no API key and no
-// network: perfect for first impressions and restaurant dead zones.
+// Demo menu: "Lokanta Deniz", a Turkish seafood and grill place. Runs entirely
+// on-device through the same deterministic engine, so it works with no API key
+// and no network: perfect for first impressions and restaurant dead zones.
 //
 // It is also the answer to the #1 rival request ("let me try it before
 // paying"): most people install Ordo at home, nowhere near a menu, and a
 // first-run screen with nothing to do but spend a free scan loses them. The
 // sample is free forever and never touches the scan budget or history.
+//
+// 2.0: the sample is a FOREIGN menu, so the first thing a new user sees is the
+// translator (printed name, translation, "what it is", Turkish waiter card).
 import { rankDishes, podiumFirst } from "./lib/engine.js";
 
 const F = (over = {}) => ({
@@ -24,129 +27,147 @@ const F = (over = {}) => ({
 // which is what the Home preview shows before the ranking reshuffles it.
 const DEMO_DISHES = [
   {
-    name: { en: "Crispy Calamari", ru: "Хрустящие кальмары" },
-    section: { en: "Starters", ru: "Закуски" },
+    name: { en: "Red Lentil Soup", ru: "Суп из красной чечевицы" },
+    original_name: "Mercimek Çorbası",
+    about: { en: "Smooth red lentil soup with lemon, a Turkish staple.", ru: "Нежный суп из красной чечевицы с лимоном, турецкая классика." },
+    section: { en: "Soups", ru: "Супы" },
     ingredients: {
-      en: ["squid", "white flour batter", "frying oil", "aioli"],
-      ru: ["кальмар", "кляр из белой муки", "фритюр", "айоли"],
+      en: ["red lentils", "onion", "carrot", "butter", "lemon"],
+      ru: ["красная чечевица", "лук", "морковь", "сливочное масло", "лимон"],
     },
-    price: "$14",
-    contains: ["shellfish", "gluten"],
-    is_meal: false,
-    cooking_method: "fried",
-    nova: 3,
-    flags: F({ deep_fried: true, refined_carb_base: true, creamy_sauce: true }),
-    positives: [],
+    price: "₺180",
+    contains: ["dairy"],
+    cooking_method: "stewed",
+    nova: 1,
+    flags: F(),
+    positives: ["legumes", "vegetables"],
     confidence: "high",
   },
   {
-    name: { en: "Greek Salad", ru: "Греческий салат" },
+    name: { en: "Shepherd's Salad", ru: "Пастуший салат" },
+    original_name: "Çoban Salatası",
+    about: { en: "Chopped tomato, cucumber, onion and green pepper with olive oil and lemon.", ru: "Томаты, огурцы, лук и зелёный перец с оливковым маслом и лимоном." },
     section: { en: "Starters", ru: "Закуски" },
     ingredients: {
-      en: ["tomato", "cucumber", "feta", "olives", "olive oil", "oregano"],
-      ru: ["томат", "огурец", "фета", "оливки", "оливковое масло", "орегано"],
+      en: ["tomato", "cucumber", "onion", "green pepper", "olive oil", "lemon"],
+      ru: ["томат", "огурец", "лук", "зелёный перец", "оливковое масло", "лимон"],
     },
-    price: "$12",
-    contains: ["dairy"],
+    price: "₺220",
+    contains: [],
     is_meal: false,
     cooking_method: "raw",
     nova: 1,
-    flags: F({ high_sodium: true }),
+    flags: F(),
     positives: ["vegetables", "healthy_fat", "polyphenols"],
     confidence: "high",
   },
   {
-    name: { en: "Grilled Salmon, Lentils & Greens", ru: "Лосось на гриле, чечевица и зелень" },
-    section: { en: "Mains", ru: "Основные" },
+    name: { en: "Fried Calamari", ru: "Кальмары во фритюре" },
+    original_name: "Kalamar Tava",
+    about: { en: "Battered squid rings, deep-fried, with walnut tarator sauce.", ru: "Кольца кальмара в кляре, во фритюре, с ореховым соусом таратор." },
+    section: { en: "Starters", ru: "Закуски" },
     ingredients: {
-      en: ["salmon", "lentils", "spinach", "olive oil", "lemon", "herbs"],
-      ru: ["лосось", "чечевица", "шпинат", "оливковое масло", "лимон", "травы"],
+      en: ["squid", "white flour batter", "frying oil", "walnut tarator"],
+      ru: ["кальмар", "кляр из белой муки", "фритюр", "соус таратор с грецким орехом"],
     },
-    price: "$24",
+    price: "₺380",
+    contains: ["shellfish", "gluten", "nuts"],
+    is_meal: false,
+    cooking_method: "fried",
+    nova: 3,
+    flags: F({ deep_fried: true, refined_carb_base: true }),
+    positives: [],
+    confidence: "high",
+  },
+  {
+    name: { en: "Grilled Sea Bass", ru: "Сибас на гриле" },
+    original_name: "Izgara Levrek",
+    about: { en: "Whole sea bass grilled over charcoal, with salad and lemon.", ru: "Целый сибас на углях, с салатом и лимоном." },
+    section: { en: "Fish", ru: "Рыба" },
+    ingredients: {
+      en: ["sea bass", "olive oil", "lemon", "rocket", "onion"],
+      ru: ["сибас", "оливковое масло", "лимон", "руккола", "лук"],
+    },
+    price: "₺620",
     contains: ["fish"],
     cooking_method: "grilled",
     nova: 1,
     flags: F(),
-    positives: ["omega3", "legumes", "vegetables", "healthy_fat", "lean_protein", "polyphenols"],
+    positives: ["omega3", "lean_protein", "healthy_fat", "vegetables", "polyphenols"],
     confidence: "high",
   },
   {
-    name: { en: "Roasted Vegetable & Farro Bowl", ru: "Боул с фарро и печёными овощами" },
-    section: { en: "Mains", ru: "Основные" },
-    ingredients: {
-      en: ["farro", "zucchini", "peppers", "chickpeas", "olive oil", "feta"],
-      ru: ["фарро", "цукини", "перец", "нут", "оливковое масло", "фета"],
-    },
-    price: "$17",
-    contains: ["gluten", "dairy"],
-    cooking_method: "roasted",
-    nova: 1,
-    flags: F({}),
-    positives: ["whole_grain", "vegetables", "legumes", "healthy_fat", "polyphenols"],
-    confidence: "high",
-  },
-  {
-    name: { en: "Chicken Souvlaki Plate", ru: "Сувлаки из курицы" },
-    section: { en: "Mains", ru: "Основные" },
-    ingredients: {
-      en: ["chicken breast", "pita", "tzatziki", "tomato", "onion"],
-      ru: ["куриная грудка", "пита", "дзадзики", "томат", "лук"],
-    },
-    price: "$19",
-    contains: ["poultry", "gluten", "dairy"],
-    cooking_method: "grilled",
-    nova: 2,
-    flags: F({ refined_carb_base: true }),
-    positives: ["lean_protein", "vegetables", "fermented"],
-    confidence: "high",
-  },
-  {
-    name: { en: "Creamy Chicken Alfredo", ru: "Паста Альфредо с курицей" },
-    section: { en: "Pasta", ru: "Паста" },
-    ingredients: {
-      en: ["white pasta", "cream", "butter", "parmesan", "chicken"],
-      ru: ["паста из белой муки", "сливки", "сливочное масло", "пармезан", "курица"],
-    },
-    price: "$21",
-    contains: ["poultry", "gluten", "dairy"],
-    cooking_method: "sauteed",
-    nova: 3,
-    flags: F({ creamy_sauce: true, refined_carb_base: true, high_sodium: true }),
-    positives: ["lean_protein"],
-    confidence: "high",
-  },
-  {
-    name: { en: "Smokehouse Bacon Burger", ru: "Бургер с беконом" },
+    name: { en: "Chicken Shish", ru: "Куриный шиш-кебаб" },
+    original_name: "Tavuk Şiş",
+    about: { en: "Marinated chicken grilled on a skewer, with bulgur and grilled peppers.", ru: "Маринованная курица на шпажке, на углях, с булгуром и перцем." },
     section: { en: "Grill", ru: "Гриль" },
     ingredients: {
-      en: ["beef patty", "bacon", "white bun", "cheddar", "BBQ sauce", "fries"],
-      ru: ["говяжья котлета", "бекон", "булочка", "чеддер", "соус барбекю", "картофель фри"],
+      en: ["chicken breast", "yoghurt marinade", "bulgur", "peppers", "tomato"],
+      ru: ["куриная грудка", "йогуртовый маринад", "булгур", "перец", "томат"],
     },
-    price: "$18",
-    contains: ["red_meat", "pork", "gluten", "dairy"],
+    price: "₺450",
+    contains: ["poultry", "gluten", "dairy"],
     cooking_method: "grilled",
-    nova: 4,
-    flags: F({ processed_meat: "garnish", refined_carb_base: true, added_sugar_sauce: true, high_sodium: true, ultra_processed: true }),
+    nova: 1,
+    flags: F(),
+    positives: ["lean_protein", "whole_grain", "vegetables"],
+    confidence: "high",
+  },
+  {
+    name: { en: "Iskender Kebab", ru: "Искендер-кебаб" },
+    original_name: "İskender Kebap",
+    about: { en: "Sliced doner over bread with tomato sauce, melted butter and yoghurt.", ru: "Дёнер на лепёшке с томатным соусом, растопленным маслом и йогуртом." },
+    section: { en: "Grill", ru: "Гриль" },
+    ingredients: {
+      en: ["doner meat", "pide bread", "butter", "tomato sauce", "yoghurt"],
+      ru: ["дёнер", "лепёшка пиде", "сливочное масло", "томатный соус", "йогурт"],
+    },
+    price: "₺540",
+    contains: ["red_meat", "gluten", "dairy"],
+    cooking_method: "roasted",
+    nova: 3,
+    flags: F({ processed_meat: "primary", refined_carb_base: true, high_sodium: true, creamy_sauce: true }),
     positives: [],
     confidence: "high",
   },
   {
-    name: { en: "Chocolate Lava Cake", ru: "Шоколадный фондан" },
+    name: { en: "Künefe", ru: "Кюнефе" },
+    original_name: "Künefe",
+    about: { en: "Hot shredded-pastry dessert with melted cheese, syrup and pistachio.", ru: "Горячий десерт из теста кадаиф с сыром, сиропом и фисташкой." },
     section: { en: "Desserts", ru: "Десерты" },
     ingredients: {
-      en: ["chocolate", "sugar", "white flour", "butter", "cream"],
-      ru: ["шоколад", "сахар", "белая мука", "сливочное масло", "сливки"],
+      en: ["kadayif pastry", "cheese", "sugar syrup", "butter", "pistachio"],
+      ru: ["тесто кадаиф", "сыр", "сахарный сироп", "сливочное масло", "фисташка"],
     },
-    price: "$11",
-    contains: ["gluten", "dairy"],
+    price: "₺260",
+    contains: ["gluten", "dairy", "nuts"],
     is_meal: false,
     cooking_method: "baked",
-    nova: 4,
-    flags: F({ added_sugar_sauce: true, refined_carb_base: true, creamy_sauce: true, ultra_processed: true }),
+    nova: 3,
+    flags: F({ added_sugar_sauce: true, refined_carb_base: true }),
     positives: [],
     confidence: "high",
   },
 ];
+
+// The waiter card's lines in Turkish, as the server returns them for a
+// translated scan (WAITER_EN in api/scan.js, same keys).
+const DEMO_PHRASES = {
+  order: "Bir {dish}, lütfen.",
+  unfry: "Kızartma yerine ızgara ya da fırında olabilir mi?",
+  sauce_side: "Kremalı sos ayrı gelebilir mi?",
+  skip_sugar: "Tatlı sos olmasın lütfen, ya da sos ayrı gelsin.",
+  swap_side: "Patates kızartması, pilav ya da ekmek yerine salata veya sebze, lütfen.",
+  skip_processed: "Pastırma, sucuk ya da işlenmiş et olmadan, lütfen.",
+  light_salt: "Az tuzlu olsun, sosu da ayrı gelsin lütfen.",
+  add_greens: "Yanına yeşillik ya da ızgara sebze de alabilir miyim?",
+  vegetarian: "Vejetaryenim: et ya da balık yemiyorum, et suyu da olmasın.",
+  pescatarian: "Et ve tavuk yemiyorum, balık olur.",
+  no_pork: "Domuz eti olmasın lütfen; domuz pastırması, jambon ve domuz yağı da.",
+  gluten_free: "Glüten yiyemiyorum. Mutfağa sorabilir misiniz?",
+  dairy_free: "Süt ürünü yemiyorum: tereyağı, krema, peynir olmasın. Sorabilir misiniz?",
+  no_nuts: "Fındık ve fıstık alerjim var. Lütfen içinde kuruyemiş olmadığından emin olun.",
+};
 
 const pick = (v, lang) => (v && typeof v === "object" && !Array.isArray(v) ? v[lang] || v.en : v);
 
@@ -156,21 +177,29 @@ function localDishes(lang) {
     name: pick(d.name, lang),
     section: pick(d.section, lang),
     ingredients: pick(d.ingredients, lang),
+    about: pick(d.about, lang),
   }));
 }
 
-export const DEMO_RESTAURANT = "Olive & Ember";
+export const DEMO_RESTAURANT = "Lokanta Deniz";
 
 export function demoResult(lang = "en") {
-  return { restaurant: DEMO_RESTAURANT, demo: true, dishes: podiumFirst(rankDishes(localDishes(lang), lang)) };
+  return {
+    restaurant: DEMO_RESTAURANT,
+    demo: true,
+    dishes: podiumFirst(rankDishes(localDishes(lang), lang)),
+    menuLang: "tr",
+    phrases: DEMO_PHRASES,
+  };
 }
 
-// The printed menu as the Home preview draws it: menu order, with each line's
-// eventual tier attached so the "scan" can reveal it in place.
+// The printed menu as the Home preview draws it: menu order, names as printed
+// (Turkish), with each line's eventual tier attached so the "scan" can reveal
+// it in place.
 export function demoMenuLines(lang = "en") {
   const ranked = demoResult(lang).dishes;
   return localDishes(lang).map((d) => {
     const r = ranked.find((x) => x.name === d.name);
-    return { name: d.name, price: d.price, tier: r.tier, rank: r.rank };
+    return { name: d.original_name, price: d.price, tier: r.tier, rank: r.rank };
   });
 }
