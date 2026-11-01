@@ -7,7 +7,7 @@
 // v2.0 calibration: processed_meat is graduated (primary protein vs garnish),
 // high_sodium softened — a squeeze of salt is not a hot dog.
 
-export const ENGINE_VERSION = "2.2.0"; // 2.1: price + is_meal per dish · 2.2: contains (diet/allergy groups)
+export const ENGINE_VERSION = "2.3.0"; // 2.1: price + is_meal per dish · 2.2: contains (diet/allergy groups) · 2.3: menu translator
 
 export const POSITIVE_POINTS = {
   vegetables: 12,
@@ -381,8 +381,13 @@ export function buildResult(raw, lang = "en") {
   };
   const score = computeScore(facts);
   const tier = tierFor(score);
+  const original = typeof raw.original_name === "string" ? raw.original_name.trim() : "";
   return {
     name: raw.name,
+    // Menu translator: the printed name, kept only when it differs from the
+    // name we show, plus a one-line "what it is" for an unfamiliar dish.
+    original: original && original.toLowerCase() !== String(raw.name).trim().toLowerCase() ? original : "",
+    about: typeof raw.about === "string" ? raw.about.trim() : "",
     section: raw.section || "",
     ingredients: raw.ingredients || [],
     cooking_method: facts.cooking_method,
@@ -449,6 +454,23 @@ export function bestValue(dishes) {
     if (!best || p < bp || (p === bp && d.score > best.score)) best = d;
   }
   return best;
+}
+
+// The podium answers "what should I order here". When a diner's needs left
+// few dishes, a vegetarian saw Chocolate Lava Cake as #3 "Best choice" simply
+// because it was the third dish left. So: never a Splurge dish, and a side or
+// dessert only when it is Good or better on its own (a Greek salad, yes).
+// Up to three such dishes go first, marked `podium`; everything else keeps its
+// score order below. A podium of two beats a dessert in third place.
+// Safe to run twice: the same dishes come out on top.
+const podiumWorthy = (d) => d.tier?.key !== "splurge" && (d.meal !== false || d.score >= 65);
+
+export function podiumFirst(dishes) {
+  let top = dishes.filter(podiumWorthy).slice(0, 3);
+  // A dessert café or a bar menu has no meals: then the best of what's there.
+  if (!top.length) top = dishes.slice(0, 3);
+  const rest = dishes.filter((d) => !top.includes(d));
+  return [...top, ...rest].map((d, i) => ({ ...d, rank: i + 1, podium: i < top.length }));
 }
 
 export function rankDishes(rawDishes, lang = "en") {

@@ -43,8 +43,8 @@ CALIBRATION ANCHORS — identical classic dishes must ALWAYS get identical facts
 // rule too: quoting it off the menu meant an English-mode app displaying
 // "Салат Греческий", which reads as broken localisation — and to an App Store
 // reviewer, broken is broken. A translated name costs a little at the table
-// (you can no longer point at the exact printed words), so v1.1 should show the
-// original underneath in small type rather than choosing one or the other.
+// (you can no longer point at the exact printed words), so since 1.1 the
+// printed name travels along as original_name and the app shows both.
 const LANG_RULE = {
   en: `
 
@@ -61,6 +61,37 @@ than copying or transliterating it ("Greek Salad" -> "Салат греческ�
 говядина, морковь, лук, растительное масло), never English.`,
 };
 
+// Menu translator (1.1): the diner abroad needs three things a translated name
+// alone can't give them: the printed words to point at, what an unfamiliar
+// dish actually is, and a way to ask for it in the waiter's language. All of it
+// rides on the same single call; on a menu already in the diner's language the
+// extra fields stay empty and cost almost nothing.
+const WAITER_EN = {
+  order: "One {dish}, please.",
+  unfry: "Could it be grilled or baked instead of deep-fried?",
+  sauce_side: "Could the creamy sauce come on the side?",
+  skip_sugar: "No sweet glaze, please, or the sauce on the side.",
+  swap_side: "Salad or vegetables instead of fries, white rice or bread, please.",
+  skip_processed: "Without bacon, sausage or cured meat, please.",
+  light_salt: "Easy on the salt, and the dressing on the side, please.",
+  add_greens: "And a side of greens or grilled vegetables, please.",
+  vegetarian: "I'm vegetarian: no meat or fish, including the stock.",
+  pescatarian: "No meat or poultry for me, fish is fine.",
+  no_pork: "No pork, please, including bacon, ham or lard.",
+  gluten_free: "I can't have gluten. Could you check with the kitchen?",
+  dairy_free: "No dairy for me: no butter, cream or cheese. Could you check?",
+  no_nuts: "I have a nut allergy. Please make sure there are no nuts.",
+};
+
+const TRANSLATOR_RULE = `
+
+MENU TRANSLATOR:
+- menu_language: the ISO 639-1 code of the language the dish names are PRINTED in ("tr", "es", "zh", "ru", "en"...).
+- original_name: the dish name exactly as printed, in its original script and spelling (no transliteration). If the printed name is already in the output language, repeat name.
+- about: when the menu is in another language, one plain sentence of at most 12 words, in the output language, saying what the dish is ("Whole sea bass grilled over charcoal, served with salad."). When the menu is in the output language, write it only if the name alone doesn't say what the dish is; otherwise empty string.
+- waiter_phrases: when the menu is in another language, translate each of these sentences into the MENU's language, naturally, as a diner would say them to a waiter there. Keep "{dish}" exactly as written. When the menu is already in the output language, return every field as an empty string.
+${Object.entries(WAITER_EN).map(([k, v]) => `  ${k}: ${v}`).join(String.fromCharCode(10))}`;
+
 const DISH_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -69,6 +100,12 @@ const DISH_SCHEMA = {
       type: "string",
       description: "Restaurant name if visible on the menu, else empty string",
     },
+    // Before the dishes so it arrives first; the phrases go after them, so
+    // the first dish of the live ranking isn't held back by them.
+    menu_language: {
+      type: "string",
+      description: "ISO 639-1 code of the language the dish names are printed in",
+    },
     dishes: {
       type: "array",
       items: {
@@ -76,6 +113,14 @@ const DISH_SCHEMA = {
         additionalProperties: false,
         properties: {
           name: { type: "string" },
+          original_name: {
+            type: "string",
+            description: "The dish name exactly as printed on the menu, original script",
+          },
+          about: {
+            type: "string",
+            description: "One plain sentence (max 12 words) on what the dish is, or empty string",
+          },
           section: { type: "string", description: "Menu section, or empty string" },
           ingredients: {
             type: "array",
@@ -133,11 +178,17 @@ const DISH_SCHEMA = {
             description: "Food groups likely present in a typical recipe, including hidden ones. When unsure, include.",
           },
         },
-        required: ["name", "section", "ingredients", "cooking_method", "nova", "flags", "positives", "confidence", "price", "is_meal", "contains"],
+        required: ["name", "original_name", "about", "section", "ingredients", "cooking_method", "nova", "flags", "positives", "confidence", "price", "is_meal", "contains"],
       },
     },
+    waiter_phrases: {
+      type: "object",
+      additionalProperties: false,
+      properties: Object.fromEntries(Object.keys(WAITER_EN).map((k) => [k, { type: "string" }])),
+      required: Object.keys(WAITER_EN),
+    },
   },
-  required: ["restaurant_name", "dishes"],
+  required: ["restaurant_name", "menu_language", "dishes", "waiter_phrases"],
 };
 
 // ---- Menu Memory: cross-user result cache (Upstash Redis REST) -----------
@@ -311,7 +362,7 @@ export default async function handler(req, res) {
     const stream = client.messages.stream({
       model,
       max_tokens: 16000,
-      system: SYSTEM + LANG_RULE[outLang],
+      system: SYSTEM + LANG_RULE[outLang] + TRANSLATOR_RULE,
       messages: [{ role: "user", content: userContent }],
       output_config: { format: { type: "json_schema", schema: DISH_SCHEMA } },
     });
@@ -345,9 +396,16 @@ export default async function handler(req, res) {
       return finish({ error: "No dishes found — is this a menu? Try a clearer photo." });
     }
 
+    const menuLang = String(parsed.menu_language || "").toLowerCase().slice(0, 3);
+    const phrases = parsed.waiter_phrases || {};
     const payload = {
       restaurant: parsed.restaurant_name || "",
       dishes: rankDishes(parsed.dishes, outLang),
+      // Only a foreign menu carries the translator fields; a menu in the
+      // diner's own language looks exactly as it did before 1.1.
+      ...(menuLang && menuLang !== outLang && phrases.order
+        ? { menuLang, phrases }
+        : {}),
     };
     // Remember this menu for everyone (best-effort, non-blocking failure).
     await kvCommand(["SET", key, JSON.stringify(payload), "EX", String(CACHE_TTL_S)]);

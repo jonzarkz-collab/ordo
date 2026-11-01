@@ -6,7 +6,7 @@
 // paying"): most people install Ordo at home, nowhere near a menu, and a
 // first-run screen with nothing to do but spend a free scan loses them. The
 // sample is free forever and never touches the scan budget or history.
-import { rankDishes } from "./lib/engine.js";
+import { rankDishes, podiumFirst } from "./lib/engine.js";
 
 const F = (over = {}) => ({
   deep_fried: false,
@@ -81,7 +81,7 @@ const DEMO_DISHES = [
     contains: ["gluten", "dairy"],
     cooking_method: "roasted",
     nova: 1,
-    flags: F({ high_sodium: true }),
+    flags: F({}),
     positives: ["whole_grain", "vegetables", "legumes", "healthy_fat", "polyphenols"],
     confidence: "high",
   },
@@ -162,7 +162,7 @@ function localDishes(lang) {
 export const DEMO_RESTAURANT = "Olive & Ember";
 
 export function demoResult(lang = "en") {
-  return { restaurant: DEMO_RESTAURANT, demo: true, dishes: rankDishes(localDishes(lang), lang) };
+  return { restaurant: DEMO_RESTAURANT, demo: true, dishes: podiumFirst(rankDishes(localDishes(lang), lang)) };
 }
 
 // The printed menu as the Home preview draws it: menu order, with each line's

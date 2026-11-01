@@ -12,7 +12,7 @@ export const UI = {
   en: {
     tagline: "Know what to order.",
     subtitle:
-      "Scan any menu — see the best choices for long-term health, ranked in seconds.",
+      "Scan any menu, in any language. The best dishes first, translated, in seconds.",
     scan: "Scan a menu",
     recent: "Recent",
     allScans: (n) => `All scans (${n})`,
@@ -144,6 +144,18 @@ export const UI = {
       `A typical recipe has no ${andList(gs, "or")}, but kitchens vary. Always confirm with your server.`,
     nothingFits:
       "Nothing here clearly fits your needs. Ask your server: kitchens can often adapt a dish.",
+    // Menu translator (1.1)
+    translatedFrom: (l) => `Translated from ${l}`,
+    orderOne: (n) => `One ${n}, please.`,
+    asks: {
+      unfry: "Could it be grilled or baked instead of deep-fried?",
+      sauce_side: "Could the creamy sauce come on the side?",
+      skip_sugar: "No sweet glaze, please, or the sauce on the side.",
+      swap_side: "Salad or vegetables instead of fries, white rice or bread, please.",
+      skip_processed: "Without bacon, sausage or cured meat, please.",
+      light_salt: "Easy on the salt, and the dressing on the side, please.",
+      add_greens: "And a side of greens or grilled vegetables, please.",
+    },
     needScript: {
       vegetarian: "I'm vegetarian: no meat or fish, including the stock.",
       pescatarian: "No meat or poultry for me, fish is fine.",
@@ -171,7 +183,7 @@ export const UI = {
   ru: {
     tagline: "Знай, что заказать.",
     subtitle:
-      "Сканируй любое меню — лучшие блюда для здоровья и долголетия, за секунды.",
+      "Сканируй любое меню на любом языке — лучшие блюда сверху, с переводом, за секунды.",
     scan: "Сканировать меню",
     recent: "Недавние",
     allScans: (n) => `Все сканы (${n})`,
@@ -290,6 +302,18 @@ export const UI = {
       `${gs.join(", ").replace(/^./, (c) => c.toUpperCase())}: в типичном рецепте этого нет. Но кухни бывают разные, всегда уточняйте у официанта.`,
     nothingFits:
       "Здесь нет блюд, которые точно вам подходят. Спросите официанта: кухня часто может адаптировать блюдо.",
+    // Переводчик меню (1.1)
+    translatedFrom: (l) => `Переведено · язык меню: ${l}`,
+    orderOne: (n) => `Я буду: ${n}.`,
+    asks: {
+      unfry: "Можно не во фритюре, а на гриле или запечь?",
+      sauce_side: "Можно сливочный соус отдельно?",
+      skip_sugar: "Без сладкой глазури, пожалуйста, или соус отдельно.",
+      swap_side: "Вместо фри, белого риса или хлеба — салат или овощи, пожалуйста.",
+      skip_processed: "Без бекона, колбасы и копчёностей, пожалуйста.",
+      light_salt: "Поменьше соли, а заправку отдельно, пожалуйста.",
+      add_greens: "И гарнир из зелени или овощей гриль, пожалуйста.",
+    },
     needScript: {
       vegetarian: "Я вегетарианец: без мяса и рыбы, в том числе без мясного бульона.",
       pescatarian: "Мне без мяса и птицы, рыбу можно.",

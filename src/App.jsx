@@ -18,6 +18,7 @@ import {
   scriptLines,
   bestValue,
   rankDishes,
+  podiumFirst,
   LOCALES,
 } from "./lib/engine.js";
 import { UI, getLang, saveLang } from "./lib/i18n.js";
@@ -63,8 +64,13 @@ import {
   Medal,
   TierDot,
   ShareIcon,
+  LanguagesIcon,
 } from "./lib/icons.jsx";
 import { drawShareCard, shareImage, shareLink } from "./lib/shareCard.js";
+// Apple's own rating sheet (SKStoreReviewController). A no-op proxy on the web.
+import { InAppReview } from "@capacitor-community/in-app-review";
+
+const REVIEW_KEY = "ordo_review_asked_v1";
 
 export default function App() {
   const [screen, setScreen] = useState("home"); // home | processing | results | detail
@@ -256,6 +262,19 @@ export default function App() {
 
   function onOrdered(next) {
     setOrders(next);
+    // Ask for a rating once, after the second real better order: by then the
+    // app has helped twice at a table. Never after a failed scan or the sample
+    // (onOrdered isn't called for the sample). Apple decides whether the
+    // prompt actually appears; the delay lets the order moment land first.
+    if (next.count >= 2 && isNative()) {
+      try {
+        if (localStorage.getItem(REVIEW_KEY)) return;
+        localStorage.setItem(REVIEW_KEY, String(Date.now()));
+      } catch {
+        return;
+      }
+      setTimeout(() => InAppReview.requestReview().catch(() => {}), 2500);
+    }
   }
 
   return (
@@ -308,6 +327,7 @@ export default function App() {
           restaurant={result?.restaurant || t.thisMenu}
           demo={!!result?.demo}
           onScan={startScan}
+          translate={result?.menuLang ? { lang: result.menuLang, phrases: result.phrases } : null}
           t={t}
           lang={lang}
         />
@@ -824,9 +844,10 @@ function Results({ result, onBack, onOpen, onScan, needs, onNeed, t, lang }) {
   const share = useShare(t, lang);
   // Everything below ranks what the diner can actually eat. Dishes their
   // needs rule out drop to their own list at the bottom, not out of sight.
-  const { fit: dishes, misfit } = fitDishes(result.dishes, needs);
-  const podium = dishes.slice(0, 3);
-  const rest = dishes.slice(3);
+  const { fit, misfit } = fitDishes(result.dishes, needs);
+  const dishes = podiumFirst(fit);
+  const podium = dishes.filter((d) => d.podium);
+  const rest = dishes.filter((d) => !d.podium);
   const weakMenu = dishes.length > 0 && dishes[0].score < 65;
   // On the podium it becomes a badge on that card; further down the list it
   // gets its own card, so a budget diner never has to open "show all".
@@ -866,6 +887,12 @@ function Results({ result, onBack, onOpen, onScan, needs, onNeed, t, lang }) {
         </div>
       )}
       <h2 className="results-heading">{t.bestChoices}</h2>
+      {result.menuLang && (
+        <div className="translated-chip">
+          <LanguagesIcon size={15} />
+          {t.translatedFrom(langName(result.menuLang, lang))}
+        </div>
+      )}
 
       <NeedsBar needs={needs} onNeed={onNeed} t={t} />
 
@@ -892,7 +919,8 @@ function Results({ result, onBack, onOpen, onScan, needs, onNeed, t, lang }) {
                 <Medal rank={d.rank} />
                 <span className="og-top-label">{t.topPick}</span>
               </span>
-              <span className="dish-name">{d.name}</span>
+              <DishName dish={d} />
+              {result.menuLang && d.about && <span className="dish-about">{d.about}</span>}
               <span className="dish-reason">{d.reason}</span>
               {value && value.rank === d.rank && <ValueBadge t={t} />}
               <span className="og-top-foot">
@@ -904,7 +932,7 @@ function Results({ result, onBack, onOpen, onScan, needs, onNeed, t, lang }) {
           <button key={d.rank} className="dish-card podium-card" onClick={() => onOpen(d)}>
             <Medal rank={d.rank} />
             <span className="dish-info">
-              <span className="dish-name">{d.name}</span>
+              <DishName dish={d} />
               <span className="dish-reason">{d.reason}</span>
               {value && value.rank === d.rank && <ValueBadge t={t} />}
             </span>
@@ -914,7 +942,7 @@ function Results({ result, onBack, onOpen, onScan, needs, onNeed, t, lang }) {
         )}
       </div>
 
-      {value && value.rank > 3 && (
+      {value && !value.podium && (
         <section className="best-value">
           <h3>
             <BanknoteIcon size={16} /> {t.bestValue}
@@ -943,7 +971,7 @@ function Results({ result, onBack, onOpen, onScan, needs, onNeed, t, lang }) {
                 <button key={d.rank} className="dish-card" onClick={() => onOpen(d)}>
                   <span className="rank">{d.rank}</span>
                   <span className="dish-info">
-                    <span className="dish-name">{d.name}</span>
+                    <DishName dish={d} />
                     <span className="dish-reason">{d.reason}</span>
                   </span>
                   <TierCol dish={d} lang={lang} />
@@ -968,7 +996,7 @@ function Results({ result, onBack, onOpen, onScan, needs, onNeed, t, lang }) {
                   onClick={() => onOpen(d)}
                 >
                   <span className="dish-info">
-                    <span className="dish-name">{d.name}</span>
+                    <DishName dish={d} />
                     <span className="clash">{t.contains(d.clash.map((g) => t.groups[g]))}</span>
                   </span>
                   <TierCol dish={d} lang={lang} />
@@ -1199,9 +1227,28 @@ function TierChip({ tier, big }) {
   );
 }
 
+// A dish name, with the name as printed on a foreign menu underneath.
+function DishName({ dish }) {
+  return (
+    <>
+      <span className="dish-name">{dish.name}</span>
+      {dish.original && <span className="dish-orig">{dish.original}</span>}
+    </>
+  );
+}
+
+// "tr" -> "Turkish" / "турецкий", in the app's language.
+function langName(code, lang) {
+  try {
+    return new Intl.DisplayNames([lang], { type: "language" }).of(code) || code;
+  } catch {
+    return code.toUpperCase();
+  }
+}
+
 /* ---------------- Detail + Improve + Waiter Script ---------------- */
 
-function Detail({ dish, allDishes, onSwap, onBack, onOrdered, restaurant, demo, onScan, needs, t, lang }) {
+function Detail({ dish, allDishes, onSwap, onBack, onOrdered, restaurant, demo, onScan, needs, translate, t, lang }) {
   const [active, setActive] = useState([]);
   const [showScript, setShowScript] = useState(false);
   const [orderedNo, setOrderedNo] = useState(null); // better-order number, or 0 = plain "enjoy"
@@ -1215,7 +1262,8 @@ function Detail({ dish, allDishes, onSwap, onBack, onOrdered, restaurant, demo, 
   const needLines = NEEDS.filter((n) => needs.includes(n.id))
     .map((n) => t.needScript[n.id])
     .filter(Boolean);
-  const canScript = active.length > 0 || needLines.length > 0;
+  // On a foreign menu the waiter card is the point: always offer it.
+  const canScript = active.length > 0 || needLines.length > 0 || !!translate;
 
   // The Yuka move: on a weak dish, offer a stronger dish from THIS menu —
   // same section first (same craving), one tap to switch. Never judgment
@@ -1280,6 +1328,8 @@ function Detail({ dish, allDishes, onSwap, onBack, onOrdered, restaurant, demo, 
       </nav>
 
       <h2 className="dish-title">{dish.name}</h2>
+      {dish.original && <p className="dish-orig big">{dish.original}</p>}
+      {dish.about && <p className="dish-about big">{dish.about}</p>}
       <div className="tier-row">
         <TierChip tier={curTier} big />
         <span className="confidence">
@@ -1377,7 +1427,7 @@ function Detail({ dish, allDishes, onSwap, onBack, onOrdered, restaurant, demo, 
               onClick={() => onSwap(d)}
             >
               <span className="dish-info">
-                <span className="dish-name">{d.name}</span>
+                <DishName dish={d} />
                 <span className="dish-reason">{d.reason}</span>
               </span>
               {/* TierCol, not a bare chip: the swap's price decides it for a
@@ -1486,6 +1536,8 @@ function Detail({ dish, allDishes, onSwap, onBack, onOrdered, restaurant, demo, 
           dish={dish}
           activeIds={active}
           extraLines={needLines}
+          needIds={needs}
+          translate={translate}
           lang={lang}
           t={t}
           orderedNo={orderedNo}
@@ -1498,22 +1550,55 @@ function Detail({ dish, allDishes, onSwap, onBack, onOrdered, restaurant, demo, 
 }
 
 /* The Waiter Script — a bright card you show across the table. */
-function ScriptCard({ dish, activeIds, extraLines = [], lang, t, orderedNo, onOrder, onClose }) {
+function ScriptCard({ dish, activeIds, extraLines = [], needIds = [], translate, lang, t, orderedNo, onOrder, onClose }) {
   const lines = [...scriptLines(dish, activeIds, lang), ...extraLines];
+  // A foreign menu: the card speaks the WAITER's language, with the diner's
+  // underneath, and leads with the printed name so they can point at it.
+  const local = translate
+    ? (() => {
+        const p = translate.phrases;
+        const printed = dish.original || dish.name;
+        const order = p.order.includes("{dish}") ? p.order.replace("{dish}", printed) : `${printed}. ${p.order}`;
+        const ids = (dish.improvements || []).map((m) => m.id).filter((id) => activeIds.includes(id));
+        return [
+          { said: order, mine: t.orderOne(dish.name) },
+          ...ids.map((id) => ({ said: p[id], mine: t.asks[id] })),
+          ...NEEDS.filter((n) => needIds.includes(n.id)).map((n) => ({ said: p[n.id], mine: t.needScript[n.id] })),
+        ].filter((l) => l.said);
+      })()
+    : null;
   return (
     <div className="script-overlay">
       <div className="script-card">
         <div className="script-brand">
           ORD<span>O</span>
         </div>
-        <p className="script-opener">{t.scriptOpener}</p>
-        <h2 className="script-dish">{dish.name}</h2>
-        <ul className="script-lines">
-          {lines.map((l) => (
-            <li key={l}>{l}</li>
-          ))}
-        </ul>
-        <p className="script-hint">{t.scriptHint}</p>
+        {local ? (
+          <>
+            <p className="script-opener">{t.scriptHint}</p>
+            <h2 className="script-dish" lang={translate.lang}>{dish.original || dish.name}</h2>
+            {dish.original && <p className="script-trans">{dish.name}</p>}
+            <ul className="script-lines local">
+              {local.map((l) => (
+                <li key={l.said}>
+                  <span lang={translate.lang}>{l.said}</span>
+                  <small>{l.mine}</small>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <>
+            <p className="script-opener">{t.scriptOpener}</p>
+            <h2 className="script-dish">{dish.name}</h2>
+            <ul className="script-lines">
+              {lines.map((l) => (
+                <li key={l}>{l}</li>
+              ))}
+            </ul>
+            <p className="script-hint">{t.scriptHint}</p>
+          </>
+        )}
         <div className="script-actions">
           <button
             className={`btn primary ${orderedNo !== null ? "done" : ""}`}

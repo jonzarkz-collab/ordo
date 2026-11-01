@@ -138,6 +138,14 @@ export const ChevronDownIcon = (p) => (
 // Rank medal — thin metallic ring with the rank number. Bronze lifted from
 // #C98F5F so all three read at ≥9:1 on the glass layer's surfaces.
 const MEDAL_COLORS = ["#F6D88A", "#D3DBE0", "#F0C8A0"];
+// Lucide "languages": the menu translator's mark.
+export const LanguagesIcon = (p) => (
+  <I {...p}>
+    <path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1" />
+    <path d="m22 22-5-10-5 10M14 18h6" />
+  </I>
+);
+
 export function Medal({ rank }) {
   const c = MEDAL_COLORS[rank - 1] || "#5c7270";
   return (

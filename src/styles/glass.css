@@ -930,3 +930,38 @@ body::before {
   from { opacity: 0; transform: translateY(-14px) rotate(-1.2deg); clip-path: inset(0 0 100% 0); }
   to { opacity: 1; transform: rotate(-1.2deg); clip-path: inset(0 0 -20px 0); }
 }
+
+/* ---- Menu translator (1.1) ---------------------------------------------- */
+/* the printed name sits under the translation, set like the paper menu */
+.dish-orig {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 14px;
+  color: var(--champagne);
+  overflow-wrap: anywhere;
+}
+.og-top .dish-orig { font-size: 16px; margin-top: -5px; }
+.dish-orig.big { font-size: 18px; margin: -6px 0 6px; }
+.dish-about { font-size: 13.5px; color: var(--muted); line-height: 1.4; }
+.dish-about.big { font-size: 15px; margin-bottom: 12px; }
+.translated-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: flex-start;
+  margin: -4px 0 12px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--teal-text);
+  background: rgba(127, 224, 218, .10);
+}
+/* the waiter card on a foreign menu: their words big, yours underneath */
+.script-dish[lang] {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 32px;
+  margin-bottom: 2px;
+}
+.script-trans { color: #3E4944; font-size: 15px; margin-bottom: 14px; }
+.script-lines.local li { display: flex; flex-direction: column; gap: 3px; }
+.script-lines.local li small { font-size: 13px; font-weight: 450; color: #55625F; }
