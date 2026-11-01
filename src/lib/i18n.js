@@ -85,6 +85,13 @@ export const UI = {
     bestValue: "Best value",
     bestValueSub: "The lowest-priced meal rated Good or better",
     topPick: "Top pick",
+    // First-run sample menu
+    sampleKind: "Mediterranean grill",
+    sampleTry: "No menu nearby? Tap to try this one",
+    sampleReading: "Ranking it…",
+    sampleBadge: "Sample menu",
+    sampleBanner: "That's a sample. Your own menu works the same way.",
+    scanYours: "Scan your menu",
   },
   ru: {
     tagline: "Знай, что заказать.",
@@ -157,6 +164,12 @@ export const UI = {
     bestValue: "Лучшая цена",
     bestValueSub: "Самое недорогое основное блюдо с оценкой «Хорошо» и выше",
     topPick: "Выбор №1",
+    sampleKind: "Средиземноморский гриль",
+    sampleTry: "Меню нет под рукой? Попробуйте на этом",
+    sampleReading: "Составляю рейтинг…",
+    sampleBadge: "Пример меню",
+    sampleBanner: "Это пример. С вашим меню всё работает так же.",
+    scanYours: "Сканировать своё меню",
   },
 };
 

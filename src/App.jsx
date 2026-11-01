@@ -20,6 +20,7 @@ import {
   LOCALES,
 } from "./lib/engine.js";
 import { UI, getLang, saveLang } from "./lib/i18n.js";
+import { demoResult, demoMenuLines, DEMO_RESTAURANT } from "./demo.js";
 import {
   FREE_SCANS,
   entitlement,
@@ -100,6 +101,38 @@ export default function App() {
     })();
   }, [metered]);
 
+  // The file input lives here, not in Home, so the sample ranking's "Scan your
+  // menu" bar can open the same picker without routing back through Home.
+  const fileRef = useRef(null);
+
+  // Gate before the photo picker, not after. Making someone frame a menu and
+  // only then telling them they're out of scans is the small cruelty that
+  // earns a one-star review.
+  function startScan() {
+    if (metered && !entitlement(granted).canScan) setPaywall(true);
+    else fileRef.current?.click();
+  }
+
+  async function onFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const image = await compressImage(file);
+      analyze({ image });
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  // The sample menu: ranked on-device by the same engine, free, and never
+  // saved to history or charged. It exists so a first run has something to do
+  // before there is a menu in hand.
+  function openDemo() {
+    setResult(demoResult(lang));
+    setScreen("results");
+  }
+
   function changeLang(l) {
     setLang(l);
     saveLang(l);
@@ -178,9 +211,13 @@ export default function App() {
 
   return (
     <div className="app">
+      {/* No `capture` attr: iOS offers Take Photo OR Photo Library, so
+          delivery-app screenshots work through the same single button. */}
+      <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
       {screen === "home" && (
         <Home
-          onAnalyze={analyze}
+          onScan={startScan}
+          onDemo={openDemo}
           error={error}
           history={history}
           onHistory={openHistory}
@@ -199,6 +236,7 @@ export default function App() {
           result={result}
           onBack={() => setScreen("home")}
           onOpen={openDish}
+          onScan={startScan}
           t={t}
           lang={lang}
         />
@@ -211,6 +249,8 @@ export default function App() {
           onSwap={openDish}
           onBack={() => setScreen("results")}
           onOrdered={onOrdered}
+          demo={!!result?.demo}
+          onScan={startScan}
           t={t}
           lang={lang}
         />
@@ -231,7 +271,8 @@ export default function App() {
 /* ---------------- Home ---------------- */
 
 function Home({
-  onAnalyze,
+  onScan,
+  onDemo,
   error,
   history,
   onHistory,
@@ -243,8 +284,10 @@ function Home({
   budget,
   onPaywall,
 }) {
-  const fileRef = useRef(null);
   const [allHist, setAllHist] = useState(false);
+  // First run = nothing scanned yet. The sample menu takes the hero spot until
+  // the first real scan, then the home screen goes back to one action.
+  const firstRun = history.length === 0;
 
   // Seven taps on the scan counter wipes local counters and reloads. See
   // resetLocalState() for why this has to exist: Apple's purchase receipt is
@@ -268,26 +311,6 @@ function Home({
     }
   }
 
-  // Gate before the photo picker, not after. Making someone frame a menu and
-  // only then telling them they're out of scans is the small cruelty that
-  // earns a one-star review.
-  function onScanTap() {
-    if (metered && !budget.canScan) onPaywall();
-    else fileRef.current?.click();
-  }
-
-  async function onFile(e) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    try {
-      const image = await compressImage(file);
-      onAnalyze({ image });
-    } catch (err) {
-      alert(err.message);
-    }
-  }
-
   return (
     <div className="screen home">
       {/* One hero action. The Better Orders count used to appear twice on this
@@ -304,11 +327,14 @@ function Home({
           </button>
         </div>
       </div>
-      <header className="brand">
-        {/* The glass hero tile. Decorative; the logo below stays the brand. */}
-        <div className="og-emblem" aria-hidden="true">
-          <EmblemIcon size={58} />
-        </div>
+      <header className={`brand ${firstRun ? "first-run" : ""}`}>
+        {/* The glass hero tile. Decorative; the logo below stays the brand.
+            On a first run the sample menu below takes its place. */}
+        {!firstRun && (
+          <div className="og-emblem" aria-hidden="true">
+            <EmblemIcon size={58} />
+          </div>
+        )}
         {/* Seven taps on the logo wipes the local counters and reloads.
             It lives HERE, not on the scan counter: that button opens the
             paywall on the first tap, and the overlay then covers it, so taps
@@ -318,19 +344,18 @@ function Home({
           ORD<span className="logo-o">O</span>
         </div>
         <p className="tagline">{t.tagline}</p>
-        <p className="subtitle">{t.subtitle}</p>
+        {!firstRun && <p className="subtitle">{t.subtitle}</p>}
       </header>
+
+      {firstRun && <SampleMenu t={t} lang={lang} onDemo={onDemo} />}
 
       {error && <div className="error-box">{error}</div>}
 
       <div className="actions">
-        <button className="btn primary big-scan" onClick={onScanTap}>
+        <button className="btn primary big-scan" onClick={onScan}>
           <CameraIcon size={22} />
           {t.scan}
         </button>
-        {/* No `capture` attr: iOS offers Take Photo OR Photo Library, so
-            delivery-app screenshots work through the same single button. */}
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
         {metered && (
           <button
             className="scan-budget"
@@ -375,6 +400,65 @@ function Home({
     </div>
   );
 }
+
+/* ---------------- Sample menu (first run) ----------------
+   A printed menu on the table with Ordo's scan line passing over it. Tapping
+   it "scans" in place (each line gets its tier dot, the winner lights up) and
+   then opens the real ranking screen for that menu. The point is to show the
+   product working in the first five seconds, before anyone has to find a menu
+   or spend a scan. */
+
+function SampleMenu({ t, lang, onDemo }) {
+  const [phase, setPhase] = useState("idle"); // idle | reading
+  const lines = demoMenuLines(lang).slice(0, 6);
+
+  function go() {
+    if (phase !== "idle") return;
+    const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    setPhase("reading");
+    // The dots land one line at a time; the ranking opens once the last one
+    // is down and the winner has had a beat to glow.
+    setTimeout(onDemo, still ? 250 : 1700);
+  }
+
+  return (
+    <button className={`sample-menu ${phase}`} onClick={go}>
+      <span className="paper" aria-hidden="true">
+        <span className="paper-name">{DEMO_RESTAURANT}</span>
+        <span className="paper-kind">{t.sampleKind}</span>
+        <span className="paper-lines">
+          {lines.map((l, i) => (
+            <span
+              key={l.name}
+              className={`paper-line ${l.rank === 1 ? "winner" : ""}`}
+              style={{ "--i": i, "--ink": TIER_DOT[l.tier.key] || l.tier.color }}
+            >
+              <span className="paper-dot" />
+              <span className="paper-dish">{l.name}</span>
+              <span className="paper-lead" />
+              <span className="paper-price">{l.price}</span>
+            </span>
+          ))}
+        </span>
+        <span className="scan-beam" />
+      </span>
+      <span className="sample-cta">
+        <SparkIcon size={15} />
+        {phase === "idle" ? t.sampleTry : t.sampleReading}
+      </span>
+    </button>
+  );
+}
+
+// Tier inks for dots on cream paper. TIER_INK is tuned for the dark glass and
+// washes out on white, so the paper gets the deeper engine-side tones.
+const TIER_DOT = {
+  excellent: "#16A36B",
+  good: "#9AA824",
+  fair: "#D9930B",
+  poor: "#D9573A",
+  splurge: "#8A979D",
+};
 
 /* ---------------- Paywall ---------------- */
 
@@ -513,7 +597,7 @@ function Processing({ t }) {
 
 /* ---------------- Results ---------------- */
 
-function Results({ result, onBack, onOpen, t, lang }) {
+function Results({ result, onBack, onOpen, onScan, t, lang }) {
   const [showAll, setShowAll] = useState(false);
   const podium = result.dishes.slice(0, 3);
   const rest = result.dishes.slice(3);
@@ -531,6 +615,7 @@ function Results({ result, onBack, onOpen, t, lang }) {
         </button>
         <span className="topbar-title">{result.restaurant || t.thisMenu}</span>
       </nav>
+      {result.demo && <div className="sample-chip">{t.sampleBadge}</div>}
       {result.cached && (
         <div className="instant-chip">
           <BoltIcon size={14} />
@@ -618,6 +703,21 @@ function Results({ result, onBack, onOpen, t, lang }) {
       )}
       <p className="hint">{t.tapHint}</p>
       <footer className="disclaimer">{t.disclaimerShort}</footer>
+      {result.demo && <ScanYoursBar t={t} onScan={onScan} />}
+    </div>
+  );
+}
+
+// Pinned under the sample ranking and its dishes: the moment someone has just
+// seen what Ordo does is the moment to hand them their own menu.
+function ScanYoursBar({ t, onScan }) {
+  return (
+    <div className="scan-yours">
+      <p className="scan-yours-text">{t.sampleBanner}</p>
+      <button className="btn primary big-scan" onClick={onScan}>
+        <CameraIcon size={20} />
+        {t.scanYours}
+      </button>
     </div>
   );
 }
@@ -670,7 +770,7 @@ function TierChip({ tier, big }) {
 
 /* ---------------- Detail + Improve + Waiter Script ---------------- */
 
-function Detail({ dish, allDishes, onSwap, onBack, onOrdered, t, lang }) {
+function Detail({ dish, allDishes, onSwap, onBack, onOrdered, demo, onScan, t, lang }) {
   const [active, setActive] = useState([]);
   const [showScript, setShowScript] = useState(false);
   const [orderedNo, setOrderedNo] = useState(null); // better-order number, or 0 = plain "enjoy"
@@ -716,7 +816,8 @@ function Detail({ dish, allDishes, onSwap, onBack, onOrdered, t, lang }) {
     if (orderedNo !== null) return;
     // A "better order" = a genuinely strong pick, or any dish improved by asks.
     const qualifies = active.length > 0 || dish.score >= 65;
-    if (qualifies) {
+    // Nobody ate the sample, so it must not inflate the Better Orders count.
+    if (qualifies && !demo) {
       const next = recordBetterOrder(dish);
       onOrdered(next);
       setOrderedNo(next.count);
@@ -901,6 +1002,7 @@ function Detail({ dish, allDishes, onSwap, onBack, onOrdered, t, lang }) {
       </div>
 
       <footer className="disclaimer">{t.disclaimerShort}</footer>
+      {demo && <ScanYoursBar t={t} onScan={onScan} />}
 
       {showScript && (
         <ScriptCard

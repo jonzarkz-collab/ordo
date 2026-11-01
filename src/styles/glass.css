@@ -382,3 +382,177 @@ body::before {
 @media (prefers-reduced-motion: reduce) {
   .og-more svg { transition: none; }
 }
+
+/* ---- 9. First run: the sample menu --------------------------------------
+   A printed menu lying on the table, the one warm object on the teal night.
+   Paper, not glass: it is CONTENT (like the waiter card), and it has to read
+   as "a real menu" at a glance. Ordo's scan line passes over it on a slow
+   loop; a tap straightens it, drops a tier dot on every line, lights the
+   winner and opens the ranking. */
+.home .brand.first-run { margin: 2vh 0 2.6vh; }
+
+.sample-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: 0 0 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.paper {
+  position: relative;
+  display: block;
+  width: min(312px, 92%);
+  padding: 20px 18px 18px;
+  border-radius: 16px;
+  overflow: hidden;
+  text-align: left;
+  color: #22302E;
+  background: linear-gradient(180deg, #FFFDF8 0%, #F6EFDF 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, .7),
+    0 28px 56px -22px rgba(0, 0, 0, .62),
+    0 0 80px -30px rgba(240, 217, 160, .45);
+  transform: rotate(-2deg);
+  transition: transform .45s cubic-bezier(.2, .8, .2, 1);
+}
+.sample-menu:active .paper { transform: rotate(-2deg) scale(.97); transition-duration: .12s; }
+.sample-menu.reading .paper { transform: rotate(0deg) scale(1.03); }
+
+.paper-name, .paper-line {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+}
+.paper-name {
+  display: block;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+.paper-kind {
+  display: block;
+  margin: 4px 0 12px;
+  padding-bottom: 12px;
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+  color: #5F5848;
+  border-bottom: 1px solid rgba(34, 48, 46, .14);
+}
+.paper-lines { display: flex; flex-direction: column; gap: 3px; }
+.paper-line {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin: 0 -7px;
+  padding: 4px 7px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.3;
+  transition: opacity .35s ease, background-color .35s ease, box-shadow .35s ease;
+}
+/* an empty grading slot before the scan, the tier colour after it */
+.paper-dot {
+  flex-shrink: 0;
+  align-self: center;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px rgba(34, 48, 46, .22);
+  transition: background-color .25s ease, box-shadow .25s ease, transform .35s cubic-bezier(.34, 1.56, .64, 1);
+}
+.paper-dish { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.paper-lead {
+  flex: 1;
+  min-width: 10px;
+  border-bottom: 1.5px dotted rgba(34, 48, 46, .32);
+  transform: translateY(-4px);
+}
+.paper-price { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.reading .paper-dot {
+  background: var(--ink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 22%, transparent);
+  transform: scale(1.15);
+  transition-delay: calc(var(--i) * 110ms + 120ms);
+}
+.reading .paper-line:not(.winner) { opacity: .5; transition-delay: 1s; }
+.reading .paper-line.winner {
+  background: rgba(22, 163, 107, .12);
+  box-shadow: inset 0 0 0 1.5px rgba(22, 163, 107, .55);
+  transition-delay: 1s;
+}
+
+/* Ordo's scan line: a teal edge with a soft wake above it */
+.scan-beam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -70px;
+  height: 70px;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(20, 160, 157, 0) 0%, rgba(20, 160, 157, .16) 75%, rgba(20, 160, 157, .85) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, .9);
+  animation: og-beam 3.6s cubic-bezier(.45, 0, .55, 1) infinite;
+}
+.reading .scan-beam { animation: og-beam .9s cubic-bezier(.4, 0, .2, 1) 1 forwards; }
+@keyframes og-beam {
+  0% { top: -70px; opacity: 0; }
+  12% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.sample-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--champagne);
+  background: var(--lg-fill-deep);
+  box-shadow: var(--lg-shadow);
+}
+
+/* the sample ranking: labelled honestly, with the real action pinned below */
+.sample-chip {
+  display: inline-flex;
+  align-self: flex-start;
+  margin-bottom: 12px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--teal-text);
+  border: 1px solid rgba(127, 224, 218, .42);
+}
+.scan-yours {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin: 20px -20px calc(-1 * max(28px, env(safe-area-inset-bottom, 0px)));
+  padding: 30px 20px max(18px, env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, rgba(18, 42, 48, 0) 0%, rgba(18, 42, 48, .94) 30%, #122A30 100%);
+}
+.scan-yours .btn { width: 100%; }
+.scan-yours-text {
+  margin-bottom: 10px;
+  text-align: center;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-beam { display: none; }
+  .paper, .paper-line, .paper-dot { transition: none; }
+}
