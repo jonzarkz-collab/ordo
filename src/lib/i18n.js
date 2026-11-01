@@ -2,6 +2,12 @@
 // scripts) lives in engine.js LOCALES; this file covers everything else on
 // screen. Icons are SVG components (icons.jsx) — labels stay emoji-free.
 
+// "pork", "pork and gluten", "pork, dairy and gluten"
+function andList(items, word) {
+  if (items.length < 2) return items.join("");
+  return `${items.slice(0, -1).join(", ")} ${word} ${items[items.length - 1]}`;
+}
+
 export const UI = {
   en: {
     tagline: "Know what to order.",
@@ -96,6 +102,43 @@ export const UI = {
     liveFound: (n) => (n === 1 ? "1 dish ranked so far…" : `${n} dishes ranked so far…`),
     liveHint: "Best first. It updates as Ordo reads.",
     liveMore: (n) => `+${n} more`,
+    // My needs (diet / allergy chips)
+    needsLabel: "My needs",
+    needNames: {
+      vegetarian: "Vegetarian",
+      pescatarian: "Pescatarian",
+      no_pork: "No pork",
+      gluten_free: "Gluten-free",
+      dairy_free: "Dairy-free",
+      no_nuts: "Nut allergy",
+    },
+    needsSaved: "Saved on this phone · applied to every menu",
+    misfitTitle: (n) => `Doesn't fit your needs (${n})`,
+    groups: {
+      red_meat: "meat",
+      pork: "pork",
+      poultry: "poultry",
+      fish: "fish",
+      shellfish: "seafood",
+      dairy: "dairy",
+      gluten: "gluten",
+      nuts: "nuts",
+    },
+    contains: (gs) => `Likely contains ${andList(gs, "and")}`,
+    likelyContains: (gs) =>
+      `Likely contains ${andList(gs, "and")}, so it doesn't fit your needs. Ask your server what they can change.`,
+    allergyNote: (gs) =>
+      `A typical recipe has no ${andList(gs, "or")}, but kitchens vary. Always confirm with your server.`,
+    nothingFits:
+      "Nothing here clearly fits your needs. Ask your server: kitchens can often adapt a dish.",
+    needScript: {
+      vegetarian: "I'm vegetarian: no meat or fish, including the stock.",
+      pescatarian: "No meat or poultry for me, fish is fine.",
+      no_pork: "No pork, please, including bacon, ham or lard.",
+      gluten_free: "I can't have gluten. Could you check with the kitchen?",
+      dairy_free: "No dairy for me: no butter, cream or cheese. Could you check?",
+      no_nuts: "I have a nut allergy. Please make sure there are no nuts.",
+    },
   },
   ru: {
     tagline: "Знай, что заказать.",
@@ -177,6 +220,44 @@ export const UI = {
     liveFound: (n) => `Уже в рейтинге: ${n}…`,
     liveHint: "Лучшие сверху. Список обновляется по ходу чтения.",
     liveMore: (n) => `и ещё ${n}`,
+    needsLabel: "Учесть",
+    needNames: {
+      vegetarian: "Вегетарианское",
+      pescatarian: "Без мяса, рыба можно",
+      no_pork: "Без свинины",
+      gluten_free: "Без глютена",
+      dairy_free: "Без молочного",
+      no_nuts: "Аллергия на орехи",
+    },
+    needsSaved: "Сохранено на телефоне · для всех меню",
+    misfitTitle: (n) => `Вам не подходит (${n})`,
+    // Винительный падеж — «содержит свинину»
+    groups: {
+      red_meat: "мясо",
+      pork: "свинину",
+      poultry: "птицу",
+      fish: "рыбу",
+      shellfish: "морепродукты",
+      dairy: "молочное",
+      gluten: "глютен",
+      nuts: "орехи",
+    },
+    contains: (gs) => `Скорее всего, содержит ${andList(gs, "и")}`,
+    likelyContains: (gs) =>
+      `Скорее всего, содержит ${andList(gs, "и")}, поэтому вам не подходит. Спросите официанта, что можно изменить.`,
+    allergyNote: (gs) =>
+      // Allergy groups (глютен, молочное, орехи) read the same in both cases.
+      `${gs.join(", ").replace(/^./, (c) => c.toUpperCase())}: в типичном рецепте этого нет. Но кухни бывают разные, всегда уточняйте у официанта.`,
+    nothingFits:
+      "Здесь нет блюд, которые точно вам подходят. Спросите официанта: кухня часто может адаптировать блюдо.",
+    needScript: {
+      vegetarian: "Я вегетарианец: без мяса и рыбы, в том числе без мясного бульона.",
+      pescatarian: "Мне без мяса и птицы, рыбу можно.",
+      no_pork: "Без свинины, пожалуйста, в том числе без бекона, ветчины и сала.",
+      gluten_free: "Мне нельзя глютен. Уточните, пожалуйста, на кухне.",
+      dairy_free: "Мне без молочного: без сливочного масла, сливок и сыра. Уточните, пожалуйста.",
+      no_nuts: "У меня аллергия на орехи. Пожалуйста, убедитесь, что их нет.",
+    },
   },
 };
 

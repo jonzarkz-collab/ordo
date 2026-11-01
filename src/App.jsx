@@ -23,6 +23,14 @@ import {
 import { UI, getLang, saveLang } from "./lib/i18n.js";
 import { demoResult, demoMenuLines, DEMO_RESTAURANT } from "./demo.js";
 import {
+  NEEDS,
+  conflicts,
+  fitDishes,
+  allergyGroups,
+  loadNeeds,
+  saveNeeds,
+} from "./lib/needs.js";
+import {
   FREE_SCANS,
   entitlement,
   consumeScan,
@@ -69,6 +77,17 @@ export default function App() {
   // being read, so the wait shows the menu and the ranking building on it.
   const [live, setLive] = useState([]);
   const [scanPhoto, setScanPhoto] = useState(null);
+  // Diet/allergy needs: chips on the ranking, saved on this device, applied to
+  // every menu from then on (lib/needs.js).
+  const [needs, setNeeds] = useState(loadNeeds);
+
+  function toggleNeed(id) {
+    setNeeds((cur) => {
+      const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
+      saveNeeds(next);
+      return next;
+    });
+  }
 
   // Scan budget. Only the native build meters anything — the web PWA stays
   // free and unlimited, which keeps it useful as a funnel and keeps the iOS
@@ -242,7 +261,7 @@ export default function App() {
         />
       )}
       {screen === "processing" && (
-        <Processing t={t} lang={lang} live={live} photo={scanPhoto} />
+        <Processing t={t} lang={lang} live={live} photo={scanPhoto} needs={needs} />
       )}
       {screen === "results" && result && (
         <Results
@@ -250,6 +269,8 @@ export default function App() {
           onBack={() => setScreen("home")}
           onOpen={openDish}
           onScan={startScan}
+          needs={needs}
+          onNeed={toggleNeed}
           t={t}
           lang={lang}
         />
@@ -258,7 +279,10 @@ export default function App() {
         <Detail
           key={`${selected.rank}-${selected.name}`}
           dish={selected}
-          allDishes={result ? result.dishes : []}
+          // Swaps come only from dishes that fit, so "Better on this menu"
+          // never suggests the pork dish to someone who just ruled pork out.
+          allDishes={result ? fitDishes(result.dishes, needs).fit : []}
+          needs={needs}
           onSwap={openDish}
           onBack={() => setScreen("results")}
           onOrdered={onOrdered}
@@ -598,13 +622,13 @@ function Paywall({ packs, budget, onBuy, onClose, t }) {
 // building itself: each dish lands as the model finishes it, ranked on-device
 // by the same engine, and the list reshuffles as stronger dishes turn up. The
 // wait becomes the product working in front of you.
-function Processing({ t, lang, live, photo }) {
+function Processing({ t, lang, live, photo, needs }) {
   const [line, setLine] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setLine((l) => (l + 1) % t.processing.length), 1600);
     return () => clearInterval(id);
   }, [t]);
-  const ranked = live.length ? rankDishes(live, lang) : [];
+  const ranked = live.length ? fitDishes(rankDishes(live, lang), needs).fit : [];
   const shown = ranked.slice(0, 5);
   return (
     <div className={`screen processing ${ranked.length ? "has-live" : ""}`}>
@@ -676,14 +700,18 @@ function LiveBoard({ dishes, lang }) {
 
 /* ---------------- Results ---------------- */
 
-function Results({ result, onBack, onOpen, onScan, t, lang }) {
+function Results({ result, onBack, onOpen, onScan, needs, onNeed, t, lang }) {
   const [showAll, setShowAll] = useState(false);
-  const podium = result.dishes.slice(0, 3);
-  const rest = result.dishes.slice(3);
-  const weakMenu = result.dishes.length > 0 && result.dishes[0].score < 65;
+  const [showMisfit, setShowMisfit] = useState(false);
+  // Everything below ranks what the diner can actually eat. Dishes their
+  // needs rule out drop to their own list at the bottom, not out of sight.
+  const { fit: dishes, misfit } = fitDishes(result.dishes, needs);
+  const podium = dishes.slice(0, 3);
+  const rest = dishes.slice(3);
+  const weakMenu = dishes.length > 0 && dishes[0].score < 65;
   // On the podium it becomes a badge on that card; further down the list it
   // gets its own card, so a budget diner never has to open "show all".
-  const value = bestValue(result.dishes);
+  const value = bestValue(dishes);
 
   return (
     <div className="screen results">
@@ -702,6 +730,15 @@ function Results({ result, onBack, onOpen, onScan, t, lang }) {
         </div>
       )}
       <h2 className="results-heading">{t.bestChoices}</h2>
+
+      <NeedsBar needs={needs} onNeed={onNeed} t={t} />
+
+      {dishes.length === 0 && misfit.length > 0 && (
+        <div className="weak-banner">
+          <AlertIcon size={16} />
+          <span>{t.nothingFits}</span>
+        </div>
+      )}
 
       {weakMenu && (
         <div className="weak-banner">
@@ -761,7 +798,7 @@ function Results({ result, onBack, onOpen, onScan, t, lang }) {
       {rest.length > 0 && (
         <>
           <button className="btn ghost small og-more" onClick={() => setShowAll(!showAll)}>
-            {showAll ? t.hide : t.showAll(result.dishes.length)}
+            {showAll ? t.hide : t.showAll(dishes.length)}
             <ChevronDownIcon size={16} className={showAll ? "og-flip" : ""} />
           </button>
           {showAll && (
@@ -780,9 +817,63 @@ function Results({ result, onBack, onOpen, onScan, t, lang }) {
           )}
         </>
       )}
+      {misfit.length > 0 && (
+        <section className="misfit">
+          <button className="btn ghost small og-more" onClick={() => setShowMisfit(!showMisfit)}>
+            {t.misfitTitle(misfit.length)}
+            <ChevronDownIcon size={16} className={showMisfit ? "og-flip" : ""} />
+          </button>
+          {showMisfit && (
+            <div className="rest-list">
+              {misfit.map((d) => (
+                <button
+                  key={`${d.rank}-${d.name}`}
+                  className="dish-card misfit-card"
+                  onClick={() => onOpen(d)}
+                >
+                  <span className="dish-info">
+                    <span className="dish-name">{d.name}</span>
+                    <span className="clash">{t.contains(d.clash.map((g) => t.groups[g]))}</span>
+                  </span>
+                  <TierCol dish={d} lang={lang} />
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
       <p className="hint">{t.tapHint}</p>
       <footer className="disclaimer">{t.disclaimerShort}</footer>
       {result.demo && <ScanYoursBar t={t} onScan={onScan} />}
+    </div>
+  );
+}
+
+// Diet and allergy chips, right on the ranking: one tap re-ranks this menu
+// and every menu after it. This replaces the onboarding quiz rival apps make
+// people sit through before they have seen anything.
+function NeedsBar({ needs, onNeed, t }) {
+  return (
+    <div className="needs">
+      <div className="needs-row" role="group" aria-label={t.needsLabel}>
+        <span className="needs-label">{t.needsLabel}</span>
+        {NEEDS.map((n) => {
+          const on = needs.includes(n.id);
+          return (
+            <button
+              key={n.id}
+              className={`need-chip ${on ? "on" : ""}`}
+              aria-pressed={on}
+              onClick={() => onNeed(n.id)}
+            >
+              {on && <CheckIcon size={13} />}
+              {t.needNames[n.id]}
+            </button>
+          );
+        })}
+      </div>
+      {needs.length > 0 && <p className="needs-note">{t.needsSaved}</p>}
     </div>
   );
 }
@@ -849,16 +940,25 @@ function TierChip({ tier, big }) {
 
 /* ---------------- Detail + Improve + Waiter Script ---------------- */
 
-function Detail({ dish, allDishes, onSwap, onBack, onOrdered, demo, onScan, t, lang }) {
+function Detail({ dish, allDishes, onSwap, onBack, onOrdered, demo, onScan, needs, t, lang }) {
   const [active, setActive] = useState([]);
   const [showScript, setShowScript] = useState(false);
   const [orderedNo, setOrderedNo] = useState(null); // better-order number, or 0 = plain "enjoy"
 
+  const clash = conflicts(dish, needs);
+  const allergies = allergyGroups(needs);
+  // What the diner can't have travels to the waiter card too: the kitchen is
+  // the only one who actually knows, so Ordo's job is to make asking easy.
+  const needLines = NEEDS.filter((n) => needs.includes(n.id))
+    .map((n) => t.needScript[n.id])
+    .filter(Boolean);
+  const canScript = active.length > 0 || needLines.length > 0;
+
   // The Yuka move: on a weak dish, offer a stronger dish from THIS menu —
   // same section first (same craving), one tap to switch. Never judgment
-  // without an exit.
+  // without an exit. A dish the diner's needs rule out gets the same exit.
   const swaps =
-    dish.score < 65 && allDishes && allDishes.length
+    (dish.score < 65 || clash.length > 0) && allDishes && allDishes.length
       ? (() => {
           const cands = allDishes.filter(
             (d) => d.score >= 65 && d.name !== dish.name
@@ -926,6 +1026,19 @@ function Detail({ dish, allDishes, onSwap, onBack, onOrdered, demo, onScan, t, l
           <ValueBadge t={t} />
         </div>
       )}
+
+      {clash.length > 0 ? (
+        <div className="weak-banner">
+          <AlertIcon size={16} />
+          <span>{t.likelyContains(clash.map((g) => t.groups[g]))}</span>
+        </div>
+      ) : allergies.length > 0 ? (
+        // Never "safe": only what a typical recipe holds, and a nudge to ask.
+        <div className="allergy-note">
+          <AlertIcon size={16} />
+          <span>{t.allergyNote(allergies.map((g) => t.groups[g]))}</span>
+        </div>
+      ) : null}
 
       <div className="chips">
         {dish.price && (
@@ -1052,14 +1165,14 @@ function Detail({ dish, allDishes, onSwap, onBack, onOrdered, demo, onScan, t, l
       )}
 
       <div className="order-actions">
-        {active.length > 0 && (
+        {canScript && (
           <button className="btn primary" onClick={() => setShowScript(true)}>
             <ReceiptIcon size={20} />
             {t.waiter}
           </button>
         )}
         <button
-          className={`btn ${active.length > 0 ? "secondary" : "primary"} ${
+          className={`btn ${canScript ? "secondary" : "primary"} ${
             orderedNo !== null ? "done" : ""
           }`}
           onClick={orderIt}
@@ -1087,6 +1200,7 @@ function Detail({ dish, allDishes, onSwap, onBack, onOrdered, demo, onScan, t, l
         <ScriptCard
           dish={dish}
           activeIds={active}
+          extraLines={needLines}
           lang={lang}
           t={t}
           orderedNo={orderedNo}
@@ -1099,8 +1213,8 @@ function Detail({ dish, allDishes, onSwap, onBack, onOrdered, demo, onScan, t, l
 }
 
 /* The Waiter Script — a bright card you show across the table. */
-function ScriptCard({ dish, activeIds, lang, t, orderedNo, onOrder, onClose }) {
-  const lines = scriptLines(dish, activeIds, lang);
+function ScriptCard({ dish, activeIds, extraLines = [], lang, t, orderedNo, onOrder, onClose }) {
+  const lines = [...scriptLines(dish, activeIds, lang), ...extraLines];
   return (
     <div className="script-overlay">
       <div className="script-card">

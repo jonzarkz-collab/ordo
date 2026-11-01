@@ -7,7 +7,7 @@
 // v2.0 calibration: processed_meat is graduated (primary protein vs garnish),
 // high_sodium softened — a squeeze of salt is not a hot dog.
 
-export const ENGINE_VERSION = "2.1.0"; // 2.1: price + is_meal per dish
+export const ENGINE_VERSION = "2.2.0"; // 2.1: price + is_meal per dish · 2.2: contains (diet/allergy groups)
 
 export const POSITIVE_POINTS = {
   vegetables: 12,
@@ -405,6 +405,9 @@ export function buildResult(raw, lang = "en") {
     // As printed on the menu — shown verbatim, never converted or guessed.
     price: typeof raw.price === "string" ? raw.price.trim().slice(0, 24) : "",
     meal: raw.is_meal !== false,
+    // Diet/allergy food groups (lib/needs.js). Never scored; only used to
+    // move a dish out of the ranking for a diner who can't eat it.
+    contains: Array.isArray(raw.contains) ? raw.contains : [],
   };
 }
 

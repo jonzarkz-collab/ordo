@@ -28,6 +28,7 @@ RULES:
 - Menu text may be messy: a single run-on line, fragmented OCR, prices glued to names. Still extract every dish you can identify — an imperfect list beats an empty one.
 - Do not invent dishes that are not on the menu.
 - price: copy the dish's price EXACTLY as printed ("$14", "12.50", "450 ₽", "25.000đ"), keeping a currency symbol only if the menu prints one. If sizes are priced separately, use the first price. If no price is printed for that dish, use an empty string. Never guess, round or convert a price.
+- contains: every food group LIKELY present in a typical restaurant version of the dish, including hidden ones: butter, cream or cheese → dairy; batter, breadcrumbs, flour-thickened sauce, soy sauce → gluten; pesto, satay, praline → nuts; fish sauce, anchovy dressing → fish; bacon bits, lard, ham → pork; meat stock → the matching meat. When unsure, include it. Diners rely on this to avoid what they can't eat.
 - is_meal: true for a full meal or main-course portion (mains, meal salads, bowls, sandwiches, a soup served as a meal); false for sides, sauces, add-ons, bread, small starters, desserts and drinks.
 
 CALIBRATION ANCHORS — identical classic dishes must ALWAYS get identical facts. Match these exactly unless the menu explicitly says otherwise:
@@ -123,8 +124,16 @@ const DISH_SCHEMA = {
             type: "boolean",
             description: "true = a full meal / main-course portion; false = side, sauce, add-on, bread, small starter, dessert or drink",
           },
+          contains: {
+            type: "array",
+            items: {
+              type: "string",
+              enum: ["red_meat", "pork", "poultry", "fish", "shellfish", "dairy", "gluten", "nuts"],
+            },
+            description: "Food groups likely present in a typical recipe, including hidden ones. When unsure, include.",
+          },
         },
-        required: ["name", "section", "ingredients", "cooking_method", "nova", "flags", "positives", "confidence", "price", "is_meal"],
+        required: ["name", "section", "ingredients", "cooking_method", "nova", "flags", "positives", "confidence", "price", "is_meal", "contains"],
       },
     },
   },
